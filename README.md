@@ -12,7 +12,7 @@ derivation32
 
 * **Don't trust, verify**
     - Compare the results of this tool with others. Verify the implementation (and the tests).
-    - If encryption is used, test [decryption](https://github.com/ceca69ec/encrypt38) until you are convinced that the passphrase you *used* was the one you *wanted*. **Use at your won risk.**
+    - If encryption is used, test [decryption](https://crates.io/crates/encrypt38) until you are convinced that the passphrase you *used* was the one you *wanted*. **Use at your won risk.**
 
 ## Features
 
@@ -38,4 +38,4 @@ derivation32
 * **Build and test**
     - Always use the flag `--release` in `cargo` even for running tests. The encryption algorithm is intended to be heavy on cpu so, without the optimizations of a release build, running the tests will be a slow process. With `--release` all tests are done in seconds.
 * **Extended root keys generation**
-    - If you don't have mnemonic and corresponging extended root keys consider using [mnemonic39](https://github.com/ceca69ec/mnemonic39)
+    - If you don't have mnemonic and corresponding extended root keys consider using [mnemonic39](https://crates.io/crates/mnemonic39)
