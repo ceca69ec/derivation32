@@ -1,25 +1,12 @@
-// derivation32/src/lib.rs
-// 20210706
-// ceca69ec8e1bcad6c6d79e1dcf7214ff67766580a62b7d19a6fb094c97b4f2dc
+//! TODO: documentation here
 
-/// Library of 'derivation32' project.
-
-use aes::{
-    Aes256,
-    cipher::{
-        BlockEncrypt,
-        generic_array::GenericArray,
-        NewBlockCipher
-    }
-};
 use bech32::ToBase32;
+use bip38::Encrypt;
 use clap::{Arg, ArgMatches};
 use hmac::{Hmac, Mac, NewMac};
 use ripemd160::Ripemd160;
-use scrypt::Params;
 use secp256k1::{Secp256k1, SecretKey, PublicKey};
 use sha2::Digest;
-use unicode_normalization::UnicodeNormalization;
 
 /// Head of user information.
 const ABOUT: &str =
@@ -88,9 +75,6 @@ const PATH_START: &str = "m";
 /// Valid prefixes of main net address.
 const PRE_ADDR: &str = "13bc";
 
-/// Prefix of all non ec encrypted keys.
-const PRE_NON_EC: [u8; 2] = [0x01, 0x42];
-
 /// Prefix of all p2wpkh-p2sh address in main net.
 const PRE_P2WPKH_P2SH_B: u8 = 0x05;
 
@@ -104,14 +88,10 @@ const PRE_WIF_B: u8 = 0x80;
 const PRE_WIF_U: &str = "5";
 
 /// All valid versions in string representation of private extended keys.
-const PRE_PRV_KEY: [&str; 6] = [
-    "tprv", "uprv", "vprv", "xprv", "yprv", "zprv"
-];
+const PRE_PRV_KEY: [&str; 6] = [ "tprv", "uprv", "vprv", "xprv", "yprv", "zprv" ];
 
 /// All valid versions in string representation of public extended keys.
-const PRE_PUB_KEY: [&str; 6] = [
-    "tpub", "upub", "vpub", "xpub", "ypub", "zpub"
-];
+const PRE_PUB_KEY: [&str; 6] = [ "tpub", "upub", "vpub", "xpub", "ypub", "zpub" ];
 
 /// String used as separator on derivation paths.
 const SEP_PATH: char = '/';
@@ -155,8 +135,9 @@ const ZPRV: [u8; 4] = [0x04, 0xb2, 0x43, 0x0c];
 /// Main net version of bip-0084 extended public keys.
 const ZPUB: [u8; 4] = [0x04, 0xb2, 0x47, 0x46];
 
-/// Error types for 'derivation' project.
+/// Error types of 'derivation' project.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd)]
+#[doc(hidden)]
 pub enum Error {
     /// Invalid address is received.
     Address,
@@ -166,12 +147,12 @@ pub enum Error {
     Base58,
     /// Invalid bench32 data is found.
     Bech32,
+    /// Wrapper for errors of 'bip38' dependency.
+    Bip38(bip38::Error),
     /// Invalid checksum encountered.
     Checksum,
     /// Found invalid option in the current context.
     Context(String),
-    /// Input data is not address, entropy, extended key nor wif key.
-    Data,
     /// Invalid attempt to derive a hardened child from extended public key.
     FromHard,
     /// Invalid hexadecimal value represented in string.
@@ -194,10 +175,6 @@ pub enum Error {
     PubData,
     /// Invalid range was found.
     Range(String),
-    /// Trowed if an error occurs when using scrypt function.
-    ScryptF,
-    /// Trowed if an invalid scrypt Param is inserted.
-    ScryptP,
     /// Invalid secret entropy found (could not generate address).
     SecEnt,
     /// Invalid wif secret key.
@@ -229,14 +206,14 @@ pub struct ExtPubKey {
 }
 
 /// Functions to manipulate data in form of arbitrary number of bytes [u8].
-pub trait BytesManipulation {
+trait BytesManipulation {
     /// Encode informed data in base 58 check.
     fn encode_base58ck(&self) -> String;
 
     /// Sha256 and ripemd160 in sequence.
     fn hash160(&self) -> [u8; 20];
 
-    /// Receives a string and return 32 bytes of a dual sha256 hash.
+    /// Receives an arbitrary number of bytes and return 32 bytes of a dual sha256 hash.
     fn hash256(&self) -> [u8; 32];
 
     /// Receives bytes and return string of hexadecimal characters.
@@ -247,18 +224,15 @@ pub trait BytesManipulation {
 }
 
 /// Function to manipulate derivation path in form of [u32].
-pub trait PathManipulation {
+trait PathManipulation {
     /// Transform a path in a form of u32 values into a string of type 'm/0...'
     fn encode_path(&self) -> String;
 }
 
 /// Functions to manipulate private keys in 32 bytes.
-pub trait PrivateKeyManipulation {
+trait PrivateKeyManipulation {
     /// Generate a secret key represented in wif format.
     fn encode_wif(&self, compress: bool) -> Result<String, Error>;
-
-    /// Encrypt private key using bip-0038 standard.
-    fn encrypt(&self, pass: &str, compress: bool) -> Result<String, Error>;
 
     /// Generate secp256k1 point based on target secret key.
     fn public_key(&self, compress: bool) -> Result<Vec<u8>, Error>;
@@ -266,7 +240,7 @@ pub trait PrivateKeyManipulation {
 }
 
 /// Functions to manipulate compressed public keys (33 bytes).
-pub trait PublicKeyCompressedManipulation {
+trait PublicKeyCompressedManipulation {
     /// Generate an segwit address of a compressed public key.
     fn segwit_p2wpkh(&self) -> Result<String, Error>;
 
@@ -275,7 +249,7 @@ pub trait PublicKeyCompressedManipulation {
 }
 
 /// Functions to manipulate strings in various occasions.
-pub trait StringManipulation {
+trait StringManipulation {
     /// Decode an address into bytes (payload only).
     fn decode_address(&self) -> Result<Vec<u8>, Error>;
 
@@ -307,41 +281,37 @@ pub trait StringManipulation {
     fn decode_range(&self) -> Result<(u32, u32), Error>;
 }
 
-/// Display implementation for enum Error
-impl Error {
-    pub fn message(&self) -> String {
+impl From<bip38::Error> for Error {
+    fn from(err: bip38::Error) -> Self {
+        Error::Bip38(err)
+    }
+}
+
+impl core::fmt::Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match self {
-            Error::Address => String::from("invalid address"),
-            Error::Argument(a) =>
-                format!("invalid argument: '\x1b[33m{}\x1b[m'", a),
-            Error::Base58 => String::from("invalid base 58 string"),
-            Error::Bech32 => String::from("invalid bench32 string"),
-            Error::Checksum => String::from("invalid checksum"),
-            Error::Context(o) =>
-                format!("'\x1b[33m{}\x1b[m' invalid in this context", o),
-            Error::Data => String::from(
-                "not a hexadecimal entropy, extended key or wif key"
+            Error::Address => write!(f, "invalid address"),
+            Error::Argument(a) => write!(f, "invalid argument: '\x1b[33m{}\x1b[m'", a),
+            Error::Base58 => write!(f, "invalid base 58 string"),
+            Error::Bech32 => write!(f, "invalid bench32 string"),
+            Error::Bip38(err) => write!(f, "{}", err),
+            Error::Checksum => write!(f, "invalid checksum"),
+            Error::Context(o) => write!(f, "'\x1b[33m{}\x1b[m' invalid in this context", o),
+            Error::FromHard => write!(f, "cannot derive hardened from public"),
+            Error::HexStr => write!(f, "invalid hexadecimal string"),
+            Error::Hmac => write!(f, "invalid input in hmac"),
+            Error::KeyLen => write!(f, "invalid key length"),
+            Error::KeyVer => write!(f, "invalid key version (prefix)"),
+            Error::NbPubB(nb) => write!(
+                f, "invalid number of bytes in the public key: '\x1b[33m{}\x1b[m'", nb
             ),
-            Error::FromHard =>
-                String::from("cannot derive hardened from public"),
-            Error::HexStr => String::from("invalid hexadecimal string"),
-            Error::Hmac => String::from("invalid input in hmac"),
-            Error::KeyLen => String::from("invalid key length"),
-            Error::KeyVer => String::from("invalid key version (prefix)"),
-            Error::NbPubB(nb) => format!(
-                "invalid number of bytes in public key: '\x1b[33m{}\x1b[m'", nb
-            ),
-            Error::NotFound => String::from("data to process not found"),
-            Error::Path(v) =>
-                format!("invalid path value: '\x1b[33m{}\x1b[m'", v),
-            Error::PrvData => String::from("invalid private data"),
-            Error::PubData => String::from("invalid public data"),
-            Error::Range(r) =>
-                format!("invalid range value: '\x1b[33m{}\x1b[m'", r),
-            Error::ScryptF => String::from("error in scrypt function"),
-            Error::ScryptP => String::from("invalid scrypt param"),
-            Error::SecEnt => String::from("invalid secret entropy"),
-            Error::WifKey => String::from("invalid wif secret key")
+            Error::NotFound => write!(f, "data to process not found"),
+            Error::Path(v) => write!(f, "invalid path value: '\x1b[33m{}\x1b[m'", v),
+            Error::PrvData => write!(f, "invalid private data"),
+            Error::PubData => write!(f, "invalid public data"),
+            Error::Range(r) => write!(f, "invalid range value: '\x1b[33m{}\x1b[m'", r),
+            Error::SecEnt => write!(f, "invalid secret entropy"),
+            Error::WifKey => write!(f, "invalid wif secret key")
         }
     }
 }
@@ -358,18 +328,14 @@ impl BytesManipulation for [u8] {
     #[inline]
     fn hash160(&self) -> [u8; 20] {
         let mut result = [0x00; 20];
-        result[..].copy_from_slice(
-            &Ripemd160::digest(&sha2::Sha256::digest(self))
-        );
+        result[..].copy_from_slice(&Ripemd160::digest(&sha2::Sha256::digest(self)));
         result
     }
 
     #[inline]
     fn hash256(&self) -> [u8; 32] {
         let mut result = [0x00; 32];
-        result[..].copy_from_slice(
-            &sha2::Sha256::digest(&sha2::Sha256::digest(self))
-        );
+        result[..].copy_from_slice( &sha2::Sha256::digest(&sha2::Sha256::digest(self)));
         result
     }
 
@@ -396,7 +362,7 @@ impl BytesManipulation for [u8] {
 /// Implementation of the structure ExtPrvKey.
 impl ExtPrvKey {
     /// Return the extended private key as base 58 check string representation.
-    pub fn as_bs58ck_prv(&self) -> String {
+    fn as_bs58ck_prv(&self) -> String {
         let mut result = [0x00; 82];
         result[..NBBY_XKEY].copy_from_slice(&self.bytes_prv());
         result[NBBY_XKEY..].copy_from_slice(&self.bytes_prv().hash256()[..4]);
@@ -417,9 +383,9 @@ impl ExtPrvKey {
     }
 
     /// Private to private child key derivation.
-    pub fn ckd_prv(&self, childnb: &u32) -> Result<ExtPrvKey, Error> {
+    fn ckd_prv(&self, childnb: &u32) -> Result<ExtPrvKey, Error> {
         let mut hmac = Hmac::<sha2::Sha512>::new_from_slice(&self.chaincd)
-                       .map_err(|_| Error::Hmac)?;
+            .map_err(|_| Error::Hmac)?;
 
         if childnb >= &HARD_NB {
             hmac.update(&[0x00]); // zeroed first byte of all private data
@@ -431,16 +397,13 @@ impl ExtPrvKey {
         hmac.update(&childnb.to_be_bytes());
 
         let r_hmac = hmac.finalize().into_bytes();
-        let mut sk = SecretKey::from_slice(&r_hmac[..32])
-                     .map_err(|_| Error::SecEnt)?;
+        let mut sk = SecretKey::from_slice(&r_hmac[..32]).map_err(|_| Error::SecEnt)?;
 
         sk.add_assign(&self.prvdata).map_err(|_| Error::SecEnt)?;
 
-        let (mut parentf, mut chaincd, mut prvdata) =
-            ([0x00; 4], [0x00; 32], [0x00; 32]);
-        parentf[..].copy_from_slice(
-            &self.prvdata.public_key(true)?.hash160()[..4]
-        );
+        let (mut parentf, mut chaincd, mut prvdata) = ([0x00; 4], [0x00; 32], [0x00; 32]);
+
+        parentf[..].copy_from_slice(&self.prvdata.public_key(true)?.hash160()[..4]);
         chaincd[..].copy_from_slice(&r_hmac[32..]);
         prvdata[..].copy_from_slice(&sk[..]);
 
@@ -458,7 +421,7 @@ impl ExtPrvKey {
     }
 
     /// Derive the extended private key according to informed path.
-    pub fn derive_prv(&self, path: &[u32]) -> Result<ExtPrvKey, Error> {
+    fn derive_prv(&self, path: &[u32]) -> Result<ExtPrvKey, Error> {
         let mut derived = *self;
         for cnb in path {
             derived = derived.ckd_prv(cnb)?;
@@ -467,9 +430,8 @@ impl ExtPrvKey {
     }
 
     /// Transform a crude vector of bytes in the structure ExtPrvKey (checked).
-    pub fn from_bs58_prv(prvk: &str) -> Result<Self, Error> {
-        if prvk.len() < 4 || !prvk.is_char_boundary(4) ||
-            !PRE_PRV_KEY.contains(&(&prvk[..4])) {
+    fn from_bs58_prv(prvk: &str) -> Result<Self, Error> {
+        if prvk.len() < 4 || !prvk.is_char_boundary(4) || !PRE_PRV_KEY.contains(&(&prvk[..4])) {
             return Err(Error::KeyVer);
         } else if prvk.len() != LEN_XKEY {
             return Err(Error::KeyLen);
@@ -517,11 +479,7 @@ impl ExtPrvKey {
         let base_path_str = path.encode_path();
         let parent = self.derive_prv(path)?;
 
-        println!(
-            "{}\n{}",
-            parent.as_bs58ck_prv(),
-            ExtPubKey::from_prv(&parent)?.as_bs58ck_pub()
-        );
+        println!("{}\n{}", parent.as_bs58ck_prv(), ExtPubKey::from_prv(&parent)?.as_bs58ck_pub());
 
         let encrypt = !pass.is_empty();
 
@@ -561,7 +519,7 @@ impl ExtPrvKey {
 /// Implementation of the structure ExtPubKey.
 impl ExtPubKey {
     /// Return the extended public key represented as a base 58 check string.
-    pub fn as_bs58ck_pub(&self) -> String {
+    fn as_bs58ck_pub(&self) -> String {
         let mut result = [0x00; 82];
         result[..NBBY_XKEY].copy_from_slice(&self.bytes_pub());
         result[NBBY_XKEY..].copy_from_slice(&self.bytes_pub().hash256()[..4]);
@@ -581,18 +539,17 @@ impl ExtPubKey {
     }
 
     /// Public to public key derivation.
-    pub fn ckd_pub(&self, childnb: &u32) -> Result<ExtPubKey, Error> {
+    fn ckd_pub(&self, childnb: &u32) -> Result<ExtPubKey, Error> {
         if childnb >= &HARD_NB { return Err(Error::FromHard); }
 
         let mut hmac = Hmac::<sha2::Sha512>::new_from_slice(&self.chaincd)
-                       .map_err(|_| Error::Hmac)?;
+            .map_err(|_| Error::Hmac)?;
 
         hmac.update(&self.pubdata);
         hmac.update(&childnb.to_be_bytes());
 
         let r_hmac = hmac.finalize().into_bytes();
-        let mut pubk = PublicKey::from_slice(&self.pubdata)
-                       .map_err(|_| Error::PubData)?;
+        let mut pubk = PublicKey::from_slice(&self.pubdata).map_err(|_| Error::PubData)?;
 
         pubk.add_exp_assign(
             &Secp256k1::new(),
@@ -618,7 +575,7 @@ impl ExtPubKey {
     }
 
     /// Derive the extended public key according to valid informed path.
-    pub fn derive_pub(&self, path: &[u32]) -> Result<ExtPubKey, Error> {
+    fn derive_pub(&self, path: &[u32]) -> Result<ExtPubKey, Error> {
         let mut derived = *self;
         for child_nb in path {
             derived = derived.ckd_pub(child_nb)?;
@@ -627,7 +584,7 @@ impl ExtPubKey {
     }
 
     /// Transform a crude vector of bytes in the structure ExtPubKey (checked).
-    pub fn from_bs58_pub(pubk: &str) -> Result<Self, Error> {
+    fn from_bs58_pub(pubk: &str) -> Result<Self, Error> {
         if pubk.len() < 4 || !pubk.is_char_boundary(4) ||
             !PRE_PUB_KEY.contains(&(&pubk[..4])) {
             return Err(Error::KeyVer);
@@ -665,7 +622,7 @@ impl ExtPubKey {
     }
 
     /// Derive a extended public key from a private one.
-    pub fn from_prv(prv: &ExtPrvKey) -> Result<ExtPubKey, Error> {
+    fn from_prv(prv: &ExtPrvKey) -> Result<ExtPubKey, Error> {
         let mut pubdata = [0x00; NBBY_PUBC];
         pubdata[..].copy_from_slice(&prv.prvdata.public_key(true)?);
         Ok(
@@ -690,15 +647,8 @@ impl ExtPubKey {
     }
 
     /// Show derivation of the extended public key based on path and range.
-    fn show_pub(
-        &self,
-        path: &[u32],
-        range: (u32, u32),
-        separator: &str
-    ) -> Result<(), Error> {
-        if range.0 >= HARD_NB || range.1 >= HARD_NB {
-            return Err(Error::FromHard);
-        }
+    fn show_pub(&self, path: &[u32], range: (u32, u32), separator: &str) -> Result<(), Error> {
+        if range.0 >= HARD_NB || range.1 >= HARD_NB { return Err(Error::FromHard); }
         let base_path_str = path.encode_path();
         let parent = self.derive_pub(path)?;
         println!("{}", parent.as_bs58ck_pub());
@@ -749,48 +699,8 @@ impl PrivateKeyManipulation for [u8; 32] {
     fn encode_wif(&self, compress: bool) -> Result<String, Error> {
         let mut decoded: Vec<u8> = vec![PRE_WIF_B];
         decoded.append(&mut self.to_vec());
-
         if compress { decoded.push(0x01); }
-
         Ok(decoded.encode_base58ck())
-    }
-
-    #[inline]
-    fn encrypt(&self, pass: &str, compress: bool) -> Result<String, Error> {
-        let address = self.public_key(compress)?.p2wpkh()?;
-        let checksum = &address.as_bytes().hash256()[..4];
-        let mut scrypt_key = [0x00; 64];
-
-        scrypt::scrypt(
-            pass.nfc().collect::<String>().as_bytes(),
-            checksum,
-            &Params::new(14, 8, 8).map_err(|_| Error::ScryptP)?,
-            &mut scrypt_key
-        ).map_err(|_| Error::ScryptF)?;
-
-        let mut half1 = [0x00; 32];
-        half1[..].copy_from_slice(&scrypt_key[..32]);
-
-        let cipher = Aes256::new(GenericArray::from_slice(&scrypt_key[32..]));
-
-        for idx in 0..32 {
-            half1[idx] ^= self[idx];
-        }
-
-        let mut part1 = GenericArray::clone_from_slice(&half1[..16]);
-        let mut part2 = GenericArray::clone_from_slice(&half1[16..]);
-
-        cipher.encrypt_block(&mut part1);
-        cipher.encrypt_block(&mut part2);
-
-        let mut buffer = [0x00; 39];
-        buffer[..2].copy_from_slice(&PRE_NON_EC);
-        buffer[2] = if compress { 0xe0 } else { 0xc0 };
-        buffer[3..7].copy_from_slice(checksum);
-        buffer[7..23].copy_from_slice(&part1);
-        buffer[23..].copy_from_slice(&part2);
-
-        Ok(buffer.encode_base58ck())
     }
 
     #[inline]
@@ -799,7 +709,6 @@ impl PrivateKeyManipulation for [u8; 32] {
             &Secp256k1::new(),
             &SecretKey::from_slice(self).map_err(|_| Error::SecEnt)?
         );
-
         if compress {
             Ok(secp_pub.serialize().to_vec())
         } else {
@@ -813,9 +722,7 @@ impl PublicKeyCompressedManipulation for [u8; NBBY_PUBC] {
     #[inline]
     fn segwit_p2wpkh(&self) -> Result<String, Error> {
         // segwit version prefix has to be inserted as 5 bit unsigned integer
-        let mut decoded_u5 = vec![
-            bech32::u5::try_from_u8(0x00).map_err(|_| Error::Bech32)?
-        ];
+        let mut decoded_u5 = vec![bech32::u5::try_from_u8(0x00).map_err(|_| Error::Bech32)?];
         decoded_u5.append(&mut self.hash160().to_base32());
         let encoded = bech32::encode("bc", decoded_u5, bech32::Variant::Bech32)
             .map_err(|_| Error::Bech32)?;
@@ -826,10 +733,8 @@ impl PublicKeyCompressedManipulation for [u8; NBBY_PUBC] {
     fn segwit_p2wpkh_p2sh(&self) -> Result<String, Error> {
         let mut redeem_script = vec![OP_0, OP_PUSH20];
         redeem_script.append(&mut self.hash160().to_vec());
-
         let mut address_bytes = vec![PRE_P2WPKH_P2SH_B];
         address_bytes.append(&mut redeem_script.hash160().to_vec());
-
         Ok(address_bytes.encode_base58ck())
     }
 }
@@ -894,7 +799,6 @@ impl StringManipulation for str {
         }
         let mut payload = [0x00; 32];
         payload[..].copy_from_slice(&raw_bytes[1..33]);
-
         Ok((payload, raw_bytes.len() == NBBY_WIFC))
     }
 
@@ -902,10 +806,7 @@ impl StringManipulation for str {
     fn hex_bytes(&self) -> Result<Vec<u8>, Error> {
         let mut out = Vec::new();
         for index in (0..self.len()).step_by(2) {
-            out.push(
-                u8::from_str_radix(&self[index..index + 2], 16)
-                .map_err(|_| Error::HexStr)?
-            );
+            out.push(u8::from_str_radix(&self[index..index + 2], 16).map_err(|_| Error::HexStr)?);
         }
         Ok(out)
     }
@@ -1192,7 +1093,9 @@ impl StringManipulation for str {
     }
 }
 
+
 /// Evaluate arguments and execute actions accordingly.
+#[doc(hidden)]
 pub fn handle_arguments(matches: ArgMatches) -> Result<(), Error> {
     let data = matches.value_of("DATA").ok_or(Error::NotFound)?;
     let passphrase = matches.value_of("passphrase").unwrap_or("");
@@ -1258,6 +1161,7 @@ pub fn handle_arguments(matches: ArgMatches) -> Result<(), Error> {
 }
 
 /// Create the default clap app for the project
+#[doc(hidden)]
 pub fn init_clap() -> clap::App<'static, 'static> {
     clap::App::new("derivation32")
         .about(ABOUT)
@@ -1306,7 +1210,7 @@ fn validate_data(data: String) -> Result<(), String> {
         || PRE_PUB_KEY.contains(&(&data[..4]))) && data.len() == LEN_XKEY {
         Ok(()) // last but not least: extended key
     } else {
-        Err(Error::Data.message())
+        Err(String::from("not a hexadecimal entropy, extended key or wif key"))
     }
 }
 
@@ -1327,35 +1231,35 @@ mod tests {
 
     /// Result of a double sha256 in 32 '0xff' bytes.
     const DS256_F: [u8; 32] = [
-        0x71, 0xca, 0x50, 0x49, 0x66, 0x1b, 0x67, 0xd2, 0xba, 0xba, 0xf3, 0x06,
-        0xcd, 0x9b, 0xc8, 0x09, 0x0a, 0x93, 0x32, 0x4c, 0x2d, 0x4f, 0xf1, 0xbb,
-        0x12, 0xa3, 0x71, 0xa0, 0x2c, 0xc2, 0x3e, 0xb8
+        0x71, 0xca, 0x50, 0x49, 0x66, 0x1b, 0x67, 0xd2, 0xba, 0xba, 0xf3, 0x06, 0xcd, 0x9b, 0xc8,
+        0x09, 0x0a, 0x93, 0x32, 0x4c, 0x2d, 0x4f, 0xf1, 0xbb, 0x12, 0xa3, 0x71, 0xa0, 0x2c, 0xc2,
+        0x3e, 0xb8
     ];
 
     /// Result of a double sha256 in 32 '0x69' bytes.
     const DS256_L: [u8; 32] = [
-        0xc1, 0x61, 0xd0, 0x98, 0x17, 0x97, 0x65, 0xc7, 0x6b, 0x8a, 0x2e, 0xae,
-        0xbd, 0xd1, 0xcc, 0x27, 0x6c, 0xfa, 0x02, 0x72, 0x18, 0xe6, 0x9c, 0x09,
-        0xb7, 0xa0, 0x94, 0x7e, 0x81, 0xc7, 0x60, 0x85
+        0xc1, 0x61, 0xd0, 0x98, 0x17, 0x97, 0x65, 0xc7, 0x6b, 0x8a, 0x2e, 0xae, 0xbd, 0xd1, 0xcc,
+        0x27, 0x6c, 0xfa, 0x02, 0x72, 0x18, 0xe6, 0x9c, 0x09, 0xb7, 0xa0, 0x94, 0x7e, 0x81, 0xc7,
+        0x60, 0x85
     ];
 
     /// Result of a double sha256 in a '0x00' byte.
     const DS256_Z: [u8; 32] = [
-        0x14, 0x06, 0xe0, 0x58, 0x81, 0xe2, 0x99, 0x36, 0x77, 0x66, 0xd3, 0x13,
-        0xe2, 0x6c, 0x05, 0x56, 0x4e, 0xc9, 0x1b, 0xf7, 0x21, 0xd3, 0x17, 0x26,
-        0xbd, 0x6e, 0x46, 0xe6, 0x06, 0x89, 0x53, 0x9a
+        0x14, 0x06, 0xe0, 0x58, 0x81, 0xe2, 0x99, 0x36, 0x77, 0x66, 0xd3, 0x13, 0xe2, 0x6c, 0x05,
+        0x56, 0x4e, 0xc9, 0x1b, 0xf7, 0x21, 0xd3, 0x17, 0x26, 0xbd, 0x6e, 0x46, 0xe6, 0x06, 0x89,
+        0x53, 0x9a
     ];
 
     /// Result from 33 bytes '0x11' inserted in sha256 and after in ripemd160.
     const H160_33_1: [u8; 20] = [
-        0x8e, 0xc4, 0xcf, 0x3e, 0xe1, 0x60, 0xb0, 0x54, 0xe0, 0xab, 0xb6, 0xf5,
-        0xc8, 0x17, 0x7b, 0x9e, 0xe5, 0x6f, 0xa5, 0x1e
+        0x8e, 0xc4, 0xcf, 0x3e, 0xe1, 0x60, 0xb0, 0x54, 0xe0, 0xab, 0xb6, 0xf5, 0xc8, 0x17, 0x7b,
+        0x9e, 0xe5, 0x6f, 0xa5, 0x1e
     ];
 
     /// Result from 33 bytes '0x69' inserted in sha256 and after in ripemd160.
     const H160_33_L: [u8; 20] = [
-        0x05, 0x88, 0xa4, 0x7e, 0x70, 0xb0, 0x2d, 0x64, 0x6a, 0xb0, 0x65, 0x80,
-        0x50, 0x74, 0x66, 0x25, 0xb0, 0x51, 0x03, 0xc8
+        0x05, 0x88, 0xa4, 0x7e, 0x70, 0xb0, 0x2d, 0x64, 0x6a, 0xb0, 0x65, 0x80, 0x50, 0x74, 0x66,
+        0x25, 0xb0, 0x51, 0x03, 0xc8
     ];
 
     /// 64 zeros hexadecimal number represented in str format.
@@ -1409,59 +1313,56 @@ mod tests {
 
     /// 'Secret' entropy to generate address.
     const P2WPKH_B: [u8; 32] = [
-        0xa9, 0x66, 0xeb, 0x60, 0x58, 0xf8, 0xec, 0x9f, 0x47, 0x07, 0x4a, 0x2f,
-        0xaa, 0xdd, 0x3d, 0xab, 0x42, 0xe2, 0xc6, 0x0e, 0xd0, 0x5b, 0xc3, 0x4d,
-        0x39, 0xd6, 0xc0, 0xe1, 0xd3, 0x2b, 0x8b, 0xdf
+        0xa9, 0x66, 0xeb, 0x60, 0x58, 0xf8, 0xec, 0x9f, 0x47, 0x07, 0x4a, 0x2f, 0xaa, 0xdd, 0x3d,
+        0xab, 0x42, 0xe2, 0xc6, 0x0e, 0xd0, 0x5b, 0xc3, 0x4d, 0x39, 0xd6, 0xc0, 0xe1, 0xd3, 0x2b,
+        0x8b, 0xdf
     ];
 
     /// Bytes of compressed public key generated with 'P2PKG_B' secret.
     const PUB_C_A: [u8; NBBY_PUBC] = [
-        0x02, 0x3c, 0xba, 0x1f, 0x4d, 0x12, 0xd1, 0xce, 0x0b, 0xce, 0xd7, 0x25,
-        0x37, 0x37, 0x69, 0xb2, 0x26, 0x2c, 0x6d, 0xaa, 0x97, 0xbe, 0x6a, 0x05,
-        0x88, 0xcf, 0xec, 0x8c, 0xe1, 0xa5, 0xf0, 0xbd, 0x09
+        0x02, 0x3c, 0xba, 0x1f, 0x4d, 0x12, 0xd1, 0xce, 0x0b, 0xce, 0xd7, 0x25, 0x37, 0x37, 0x69,
+        0xb2, 0x26, 0x2c, 0x6d, 0xaa, 0x97, 0xbe, 0x6a, 0x05, 0x88, 0xcf, 0xec, 0x8c, 0xe1, 0xa5,
+        0xf0, 0xbd, 0x09
     ];
 
     /// Bytes of compressed public key generated with all bytes '0x11'.
     const PUB_C_1: [u8; NBBY_PUBC] = [
-        0x03, 0x4f, 0x35, 0x5b, 0xdc, 0xb7, 0xcc, 0x0a, 0xf7, 0x28, 0xef, 0x3c,
-        0xce, 0xb9, 0x61, 0x5d, 0x90, 0x68, 0x4b, 0xb5, 0xb2, 0xca, 0x5f, 0x85,
-        0x9a, 0xb0, 0xf0, 0xb7, 0x04, 0x07, 0x58, 0x71, 0xaa
+        0x03, 0x4f, 0x35, 0x5b, 0xdc, 0xb7, 0xcc, 0x0a, 0xf7, 0x28, 0xef, 0x3c, 0xce, 0xb9, 0x61,
+        0x5d, 0x90, 0x68, 0x4b, 0xb5, 0xb2, 0xca, 0x5f, 0x85, 0x9a, 0xb0, 0xf0, 0xb7, 0x04, 0x07,
+        0x58, 0x71, 0xaa
     ];
 
     /// Bytes of compressed public key generated with all bytes '0x69'.
     const PUB_C_L: [u8; NBBY_PUBC] = [
-        0x02, 0x66, 0x6b, 0xdf, 0x20, 0x25, 0xe3, 0x2f, 0x41, 0x08, 0x88, 0x99,
-        0xf2, 0xbc, 0xb4, 0xbf, 0x69, 0x83, 0x18, 0x7f, 0x38, 0x0e, 0x72, 0xfc,
-        0x7d, 0xee, 0x11, 0x5b, 0x1f, 0x99, 0x57, 0xcc, 0x72
+        0x02, 0x66, 0x6b, 0xdf, 0x20, 0x25, 0xe3, 0x2f, 0x41, 0x08, 0x88, 0x99, 0xf2, 0xbc, 0xb4,
+        0xbf, 0x69, 0x83, 0x18, 0x7f, 0x38, 0x0e, 0x72, 0xfc, 0x7d, 0xee, 0x11, 0x5b, 0x1f, 0x99,
+        0x57, 0xcc, 0x72
     ];
 
     /// Bytes of uncompressed public key generated with all bytes '0x11'.
     const PUB_U_1: [u8; NBBY_PUBU] = [
-        0x04, 0x4f, 0x35, 0x5b, 0xdc, 0xb7, 0xcc, 0x0a, 0xf7, 0x28, 0xef, 0x3c,
-        0xce, 0xb9, 0x61, 0x5d, 0x90, 0x68, 0x4b, 0xb5, 0xb2, 0xca, 0x5f, 0x85,
-        0x9a, 0xb0, 0xf0, 0xb7, 0x04, 0x07, 0x58, 0x71, 0xaa, 0x38, 0x5b, 0x6b,
-        0x1b, 0x8e, 0xad, 0x80, 0x9c, 0xa6, 0x74, 0x54, 0xd9, 0x68, 0x3f, 0xcf,
-        0x2b, 0xa0, 0x34, 0x56, 0xd6, 0xfe, 0x2c, 0x4a, 0xbe, 0x2b, 0x07, 0xf0,
+        0x04, 0x4f, 0x35, 0x5b, 0xdc, 0xb7, 0xcc, 0x0a, 0xf7, 0x28, 0xef, 0x3c, 0xce, 0xb9, 0x61,
+        0x5d, 0x90, 0x68, 0x4b, 0xb5, 0xb2, 0xca, 0x5f, 0x85, 0x9a, 0xb0, 0xf0, 0xb7, 0x04, 0x07,
+        0x58, 0x71, 0xaa, 0x38, 0x5b, 0x6b, 0x1b, 0x8e, 0xad, 0x80, 0x9c, 0xa6, 0x74, 0x54, 0xd9,
+        0x68, 0x3f, 0xcf, 0x2b, 0xa0, 0x34, 0x56, 0xd6, 0xfe, 0x2c, 0x4a, 0xbe, 0x2b, 0x07, 0xf0,
         0xfb, 0xdb, 0xb2, 0xf1, 0xc1
     ];
 
     /// Bytes of uncompressed public key generated with 'P2PKG_B' secret.
     const PUB_U_A: [u8; NBBY_PUBU] = [
-        0x04, 0x3c, 0xba, 0x1f, 0x4d, 0x12, 0xd1, 0xce, 0x0b, 0xce, 0xd7, 0x25,
-        0x37, 0x37, 0x69, 0xb2, 0x26, 0x2c, 0x6d, 0xaa, 0x97, 0xbe, 0x6a, 0x05,
-        0x88, 0xcf, 0xec, 0x8c, 0xe1, 0xa5, 0xf0, 0xbd, 0x09, 0x2f, 0x56, 0xb5,
-        0x49, 0x2a, 0xdb, 0xfc, 0x57, 0x0b, 0x15, 0x64, 0x4c, 0x74, 0xcc, 0x8a,
-        0x48, 0x74, 0xed, 0x20, 0xdf, 0xe4, 0x7e, 0x5d, 0xce, 0x2e, 0x08, 0x60,
+        0x04, 0x3c, 0xba, 0x1f, 0x4d, 0x12, 0xd1, 0xce, 0x0b, 0xce, 0xd7, 0x25, 0x37, 0x37, 0x69,
+        0xb2, 0x26, 0x2c, 0x6d, 0xaa, 0x97, 0xbe, 0x6a, 0x05, 0x88, 0xcf, 0xec, 0x8c, 0xe1, 0xa5,
+        0xf0, 0xbd, 0x09, 0x2f, 0x56, 0xb5, 0x49, 0x2a, 0xdb, 0xfc, 0x57, 0x0b, 0x15, 0x64, 0x4c,
+        0x74, 0xcc, 0x8a, 0x48, 0x74, 0xed, 0x20, 0xdf, 0xe4, 0x7e, 0x5d, 0xce, 0x2e, 0x08, 0x60,
         0x1d, 0x6f, 0x11, 0xf5, 0xa4
     ];
 
     /// Bytes of uncompressed public key generated with all bytes '0x69'.
     const PUB_U_L: [u8; NBBY_PUBU] = [
-        0x04, 0x66, 0x6b, 0xdf, 0x20, 0x25, 0xe3, 0x2f, 0x41, 0x08, 0x88, 0x99,
-        0xf2, 0xbc, 0xb4, 0xbf, 0x69, 0x83, 0x18, 0x7f, 0x38, 0x0e, 0x72, 0xfc,
-        0x7d, 0xee, 0x11, 0x5b, 0x1f, 0x99, 0x57, 0xcc, 0x72, 0x9d, 0xd9, 0x76,
-        0x13, 0x1c, 0x4c, 0x8e, 0x12, 0xab, 0x10, 0x83, 0xca, 0x06, 0x54, 0xca,
-        0x5f, 0xdb, 0xca, 0xc8, 0xd3, 0x19, 0x8d, 0xaf, 0x90, 0xf5, 0x81, 0xb5,
+        0x04, 0x66, 0x6b, 0xdf, 0x20, 0x25, 0xe3, 0x2f, 0x41, 0x08, 0x88, 0x99, 0xf2, 0xbc, 0xb4,
+        0xbf, 0x69, 0x83, 0x18, 0x7f, 0x38, 0x0e, 0x72, 0xfc, 0x7d, 0xee, 0x11, 0x5b, 0x1f, 0x99,
+        0x57, 0xcc, 0x72, 0x9d, 0xd9, 0x76, 0x13, 0x1c, 0x4c, 0x8e, 0x12, 0xab, 0x10, 0x83, 0xca,
+        0x06, 0x54, 0xca, 0x5f, 0xdb, 0xca, 0xc8, 0xd3, 0x19, 0x8d, 0xaf, 0x90, 0xf5, 0x81, 0xb5,
         0x91, 0xd5, 0x63, 0x79, 0xca
     ];
 
@@ -1476,32 +1377,31 @@ mod tests {
 
     /// Decoded segwit address generated with secret of all bytes '0x11'
     const SEGW_DEC_1: [u8; 20] = [
-        0xfc, 0x72, 0x50, 0xa2, 0x11, 0xde, 0xdd, 0xc7, 0x0e, 0xe5, 0xa2, 0x73,
-        0x8d, 0xe5, 0xf0, 0x78, 0x17, 0x35, 0x1c, 0xef
+        0xfc, 0x72, 0x50, 0xa2, 0x11, 0xde, 0xdd, 0xc7, 0x0e, 0xe5, 0xa2, 0x73, 0x8d, 0xe5, 0xf0,
+        0x78, 0x17, 0x35, 0x1c, 0xef
     ];
 
     /// Decoded segwit address generated with 'secret' number.
     const SEGW_DEC_A: [u8; 20] = [
-        0x3a, 0x38, 0xd4, 0x4d, 0x6a, 0x0c, 0x8d, 0x0b, 0xb8, 0x4e, 0x02, 0x32,
-        0xcc, 0x63, 0x2b, 0x7e, 0x48, 0xc7, 0x2e, 0x0e
+        0x3a, 0x38, 0xd4, 0x4d, 0x6a, 0x0c, 0x8d, 0x0b, 0xb8, 0x4e, 0x02, 0x32, 0xcc, 0x63, 0x2b,
+        0x7e, 0x48, 0xc7, 0x2e, 0x0e
     ];
 
     /// Decoded segwit address generated with secret of all bytes '0x69'
     const SEGW_DEC_L: [u8; 20] = [
-        0xe7, 0xa6, 0x02, 0x43, 0x83, 0x2b, 0x47, 0x52, 0xe6, 0xac, 0x69, 0x4c,
-        0xc4, 0x71, 0xd7, 0xa6, 0x5c, 0x24, 0xae, 0x85
+        0xe7, 0xa6, 0x02, 0x43, 0x83, 0x2b, 0x47, 0x52, 0xe6, 0xac, 0x69, 0x4c, 0xc4, 0x71, 0xd7,
+        0xa6, 0x5c, 0x24, 0xae, 0x85
     ];
 
     /// Paths of first test vector of bip-0032.
     const TV_32_01_PATH: [&str; 6] = [
-        "m", "m/0h", "m/0h/1", "m/0h/1/2h", "m/0h/1/2h/2",
-        "m/0h/1/2h/2/1000000000"
+        "m", "m/0h", "m/0h/1", "m/0h/1/2h", "m/0h/1/2h/2", "m/0h/1/2h/2/1000000000"
     ];
 
     /// Paths of second test vector of bip-0032.
     const TV_32_02_PATH: [&str; 6] = [
-        "m", "m/0", "m/0/2147483647h", "m/0/2147483647h/1",
-        "m/0/2147483647h/1/2147483646h", "m/0/2147483647h/1/2147483646h/2"
+        "m", "m/0", "m/0/2147483647h", "m/0/2147483647h/1", "m/0/2147483647h/1/2147483646h",
+        "m/0/2147483647h/1/2147483646h/2"
     ];
 
     /// Paths of third test vector of bip-0032.
@@ -1509,176 +1409,138 @@ mod tests {
 
     /// Private extended keys of first test vector of bip-0032.
     const TV_32_01_XPRV: [[&str; 2]; 6] = [
-    [
-        "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKm",
-        "PGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
-    ],
-    [
-        "xprv9uHRZZhk6KAJC1avXpDAp4MDc3sQKNxDiPvvkX8Br5ngLNv1TxvUxt4cV1rGL5hj",
-        "6KCesnDYUhd7oWgT11eZG7XnxHrnYeSvkzY7d2bhkJ7"
-    ],
-    [
-        "xprv9wTYmMFdV23N2TdNG573QoEsfRrWKQgWeibmLntzniatZvR9BmLnvSxqu53Kw1Um",
-        "YPxLgboyZQaXwTCg8MSY3H2EU4pWcQDnRnrVA1xe8fs"
-    ],
-    [
-        "xprv9z4pot5VBttmtdRTWfWQmoH1taj2axGVzFqSb8C9xaxKymcFzXBDptWmT7FwuEzG",
-        "3ryjH4ktypQSAewRiNMjANTtpgP4mLTj34bhnZX7UiM"
-    ],
-    [
-        "xprvA2JDeKCSNNZky6uBCviVfJSKyQ1mDYahRjijr5idH2WwLsEd4Hsb2Tyh8RfQMuPh",
-        "7f7RtyzTtdrbdqqsunu5Mm3wDvUAKRHSC34sJ7in334"
-    ],
-    [
-        "xprvA41z7zogVVwxVSgdKUHDy1SKmdb533PjDz7J6N6mV6uS3ze1ai8FHa8kmHScGpWm",
-        "j4WggLyQjgPie1rFSruoUihUZREPSL39UNdE3BBDu76"
-    ]];
+        [
+            "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKm",
+            "PGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
+        ],
+        [
+            "xprv9uHRZZhk6KAJC1avXpDAp4MDc3sQKNxDiPvvkX8Br5ngLNv1TxvUxt4cV1rGL5hj",
+            "6KCesnDYUhd7oWgT11eZG7XnxHrnYeSvkzY7d2bhkJ7"
+        ],
+        [
+            "xprv9wTYmMFdV23N2TdNG573QoEsfRrWKQgWeibmLntzniatZvR9BmLnvSxqu53Kw1Um",
+            "YPxLgboyZQaXwTCg8MSY3H2EU4pWcQDnRnrVA1xe8fs"
+        ],
+        [
+            "xprv9z4pot5VBttmtdRTWfWQmoH1taj2axGVzFqSb8C9xaxKymcFzXBDptWmT7FwuEzG",
+            "3ryjH4ktypQSAewRiNMjANTtpgP4mLTj34bhnZX7UiM"
+        ],
+        [
+            "xprvA2JDeKCSNNZky6uBCviVfJSKyQ1mDYahRjijr5idH2WwLsEd4Hsb2Tyh8RfQMuPh",
+            "7f7RtyzTtdrbdqqsunu5Mm3wDvUAKRHSC34sJ7in334"
+        ],
+        [
+            "xprvA41z7zogVVwxVSgdKUHDy1SKmdb533PjDz7J6N6mV6uS3ze1ai8FHa8kmHScGpWm",
+            "j4WggLyQjgPie1rFSruoUihUZREPSL39UNdE3BBDu76"
+        ]
+    ];
 
     /// Private extended keys of second test vector of bip-0032.
     const TV_32_02_XPRV: [[&str; 2]; 6] = [
-    [
-        "xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssr",
-        "dK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U"
-    ],
-    [
-        "xprv9vHkqa6EV4sPZHYqZznhT2NPtPCjKuDKGY38FBWLvgaDx45zo9WQRUT3dKYnjwih",
-        "2yJD9mkrocEZXo1ex8G81dwSM1fwqWpWkeS3v86pgKt"
-    ],
-    [
-        "xprv9wSp6B7kry3Vj9m1zSnLvN3xH8RdsPP1Mh7fAaR7aRLcQMKTR2vidYEeEg2mUCTA",
-        "wCd6vnxVrcjfy2kRgVsFawNzmjuHc2YmYRmagcEPdU9"
-    ],
-    [
-        "xprv9zFnWC6h2cLgpmSA46vutJzBcfJ8yaJGg8cX1e5StJh45BBciYTRXSd25UEPVues",
-        "F9yog62tGAQtHjXajPPdbRCHuWS6T8XA2ECKADdw4Ef"
-    ],
-    [
-        "xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39",
-        "njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc"
-    ],
-    [
-        "xprvA2nrNbFZABcdryreWet9Ea4LvTJcGsqrMzxHx98MMrotbir7yrKCEXw7nadnHM8D",
-        "q38EGfSh6dqA9QWTyefMLEcBYJUuekgW4BYPJcr9E7j"
-    ]];
+        [
+            "xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssr",
+            "dK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U"
+        ],
+        [
+            "xprv9vHkqa6EV4sPZHYqZznhT2NPtPCjKuDKGY38FBWLvgaDx45zo9WQRUT3dKYnjwih",
+            "2yJD9mkrocEZXo1ex8G81dwSM1fwqWpWkeS3v86pgKt"
+        ],
+        [
+            "xprv9wSp6B7kry3Vj9m1zSnLvN3xH8RdsPP1Mh7fAaR7aRLcQMKTR2vidYEeEg2mUCTA",
+            "wCd6vnxVrcjfy2kRgVsFawNzmjuHc2YmYRmagcEPdU9"
+        ],
+        [
+            "xprv9zFnWC6h2cLgpmSA46vutJzBcfJ8yaJGg8cX1e5StJh45BBciYTRXSd25UEPVues",
+            "F9yog62tGAQtHjXajPPdbRCHuWS6T8XA2ECKADdw4Ef"
+        ],
+        [
+            "xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39",
+            "njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc"
+        ],
+        [
+            "xprvA2nrNbFZABcdryreWet9Ea4LvTJcGsqrMzxHx98MMrotbir7yrKCEXw7nadnHM8D",
+            "q38EGfSh6dqA9QWTyefMLEcBYJUuekgW4BYPJcr9E7j"
+        ]
+    ];
 
     /// Private extended keys of third test vector of bip-0032.
     const TV_32_03_XPRV: [[&str; 2]; 2] = [
-    [
-        "xprv9s21ZrQH143K25QhxbucbDDuQ4naNntJRi4KUfWT7xo4EKsHt2QJDu7KXp1A3u7B",
-        "i1j8ph3EGsZ9Xvz9dGuVrtHHs7pXeTzjuxBrCmmhgC6"
-    ],
-    [
-        "xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7",
-        "AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L"
-    ]];
+        [
+            "xprv9s21ZrQH143K25QhxbucbDDuQ4naNntJRi4KUfWT7xo4EKsHt2QJDu7KXp1A3u7B",
+            "i1j8ph3EGsZ9Xvz9dGuVrtHHs7pXeTzjuxBrCmmhgC6"
+        ],
+        [
+            "xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7",
+            "AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L"
+        ]
+    ];
 
     /// Public extended keys of first test vector of bip-0032.
     const TV_32_01_XPUB: [[&str; 2]; 6] = [
-    [
-        "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjq",
-        "JoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
-    ],
-    [
-        "xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeN",
-        "K1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw"
-    ],
-    [
-        "xpub6ASuArnXKPbfEwhqN6e3mwBcDTgzisQN1wXN9BJcM47sSikHjJf3UFHKkNAWbWMi",
-        "Gj7Wf5uMash7SyYq527Hqck2AxYysAA7xmALppuCkwQ"
-    ],
-    [
-        "xpub6D4BDPcP2GT577Vvch3R8wDkScZWzQzMMUm3PWbmWvVJrZwQY4VUNgqFJPMM3No2",
-        "dFDFGTsxxpG5uJh7n7epu4trkrX7x7DogT5Uv6fcLW5"
-    ],
-    [
-        "xpub6FHa3pjLCk84BayeJxFW2SP4XRrFd1JYnxeLeU8EqN3vDfZmbqBqaGJAyiLjTAwm",
-        "6ZLRQUMv1ZACTj37sR62cfN7fe5JnJ7dh8zL4fiyLHV"
-    ],
-    [
-        "xpub6H1LXWLaKsWFhvm6RVpEL9P4KfRZSW7abD2ttkWP3SSQvnyA8FSVqNTEcYFgJS2U",
-        "aFcxupHiYkro49S8yGasTvXEYBVPamhGW6cFJodrTHy"
-    ]];
+        [
+            "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjq",
+            "JoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
+        ],
+        [
+            "xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeN",
+            "K1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw"
+        ],
+        [
+            "xpub6ASuArnXKPbfEwhqN6e3mwBcDTgzisQN1wXN9BJcM47sSikHjJf3UFHKkNAWbWMi",
+            "Gj7Wf5uMash7SyYq527Hqck2AxYysAA7xmALppuCkwQ"
+        ],
+        [
+            "xpub6D4BDPcP2GT577Vvch3R8wDkScZWzQzMMUm3PWbmWvVJrZwQY4VUNgqFJPMM3No2",
+            "dFDFGTsxxpG5uJh7n7epu4trkrX7x7DogT5Uv6fcLW5"
+        ],
+        [
+            "xpub6FHa3pjLCk84BayeJxFW2SP4XRrFd1JYnxeLeU8EqN3vDfZmbqBqaGJAyiLjTAwm",
+            "6ZLRQUMv1ZACTj37sR62cfN7fe5JnJ7dh8zL4fiyLHV"
+        ],
+        [
+            "xpub6H1LXWLaKsWFhvm6RVpEL9P4KfRZSW7abD2ttkWP3SSQvnyA8FSVqNTEcYFgJS2U",
+            "aFcxupHiYkro49S8yGasTvXEYBVPamhGW6cFJodrTHy"
+        ]
+    ];
 
     /// Public extended keys of second test vector of bip-0032.
     const TV_32_02_XPUB: [[&str; 2]; 6] = [
-    [
-        "xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6o",
-        "DMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB"
-    ],
-    [
-        "xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7E",
-        "RfvrnKZjXoUmmDznezpbZb7ap6r1D3tgFxHmwMkQTPH"
-    ],
-    [
-        "xpub6ASAVgeehLbnwdqV6UKMHVzgqAG8Gr6riv3Fxxpj8ksbH9ebxaEyBLZ85ySDhKiL",
-        "DBrQSARLq1uNRts8RuJiHjaDMBU4Zn9h8LZNnBC5y4a"
-    ],
-    [
-        "xpub6DF8uhdarytz3FWdA8TvFSvvAh8dP3283MY7p2V4SeE2wyWmG5mg5EwVvmdMVCQc",
-        "oNJxGoWaU9DCWh89LojfZ537wTfunKau47EL2dhHKon"
-    ],
-    [
-        "xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4",
-        "koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL"
-    ],
-    [
-        "xpub6FnCn6nSzZAw5Tw7cgR9bi15UV96gLZhjDstkXXxvCLsUXBGXPdSnLFbdpq8p9Hm",
-        "GsApME5hQTZ3emM2rnY5agb9rXpVGyy3bdW6EEgAtqt"
-    ]];
+        [
+            "xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6o",
+            "DMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB"
+        ],
+        [
+            "xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7E",
+            "RfvrnKZjXoUmmDznezpbZb7ap6r1D3tgFxHmwMkQTPH"
+        ],
+        [
+            "xpub6ASAVgeehLbnwdqV6UKMHVzgqAG8Gr6riv3Fxxpj8ksbH9ebxaEyBLZ85ySDhKiL",
+            "DBrQSARLq1uNRts8RuJiHjaDMBU4Zn9h8LZNnBC5y4a"
+        ],
+        [
+            "xpub6DF8uhdarytz3FWdA8TvFSvvAh8dP3283MY7p2V4SeE2wyWmG5mg5EwVvmdMVCQc",
+            "oNJxGoWaU9DCWh89LojfZ537wTfunKau47EL2dhHKon"
+        ],
+        [
+            "xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4",
+            "koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL"
+        ],
+        [
+            "xpub6FnCn6nSzZAw5Tw7cgR9bi15UV96gLZhjDstkXXxvCLsUXBGXPdSnLFbdpq8p9Hm",
+            "GsApME5hQTZ3emM2rnY5agb9rXpVGyy3bdW6EEgAtqt"
+        ]
+    ];
 
     /// Public extended keys of third test vector of bip-0032.
     const TV_32_03_XPUB: [[&str; 2]; 2] = [
-    [
-        "xpub661MyMwAqRbcEZVB4dScxMAdx6d4nFc9nvyvH3v4gJL378CSRZiYmhRoP7mBy6gS",
-        "PSCYk6SzXPTf3ND1cZAceL7SfJ1Z3GC8vBgp2epUt13"
-    ],
-    [
-        "xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHB",
-        "aohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y"
-    ]];
-
-    /// List of non ec encrypted keys acquired on test vector of bip-0038.
-    const TV_38_ENCRYPTED: [&str; 5] = [
-        "6PRVWUbkzzsbcVac2qwfssoUJAN1Xhrg6bNk8J7Nzm5H7kxEbn2Nh2ZoGg",
-        "6PRNFFkZc2NZ6dJqFfhRoFNMR9Lnyj7dYGrzdgXXVMXcxoKTePPX1dWByq",
-        "6PRW5o9FLp4gJDDVqJQKJFTpMvdsSGJxMYHtHaQBF3ooa8mwD69bapcDQn",
-        "6PYNKZ1EAgYgmQfmNVamxyXVWHzK5s6DGhwP4J5o44cvXdoY7sRzhtpUeo",
-        "6PYLtMnXvfG3oJde97zRyLYFZCYizPU5T3LwgdYJz1fRhh16bU7u6PPmY7"
-    ];
-
-    /// Resulting keys obtained in test vector of bip-0038.
-    const TV_38_KEY: [[u8; 32]; 5] = [
-    [
-        0xcb, 0xf4, 0xb9, 0xf7, 0x04, 0x70, 0x85, 0x6b, 0xb4, 0xf4, 0x0f, 0x80,
-        0xb8, 0x7e, 0xdb, 0x90, 0x86, 0x59, 0x97, 0xff, 0xee, 0x6d, 0xf3, 0x15,
-        0xab, 0x16, 0x6d, 0x71, 0x3a, 0xf4, 0x33, 0xa5
-    ],
-    [
-        0x09, 0xc2, 0x68, 0x68, 0x80, 0x09, 0x5b, 0x1a, 0x4c, 0x24, 0x9e, 0xe3,
-        0xac, 0x4e, 0xea, 0x8a, 0x01, 0x4f, 0x11, 0xe6, 0xf9, 0x86, 0xd0, 0xb5,
-        0x02, 0x5a, 0xc1, 0xf3, 0x9a, 0xfb, 0xd9, 0xae
-    ],
-    [
-        0x64, 0xee, 0xab, 0x5f, 0x9b, 0xe2, 0xa0, 0x1a, 0x83, 0x65, 0xa5, 0x79,
-        0x51, 0x1e, 0xb3, 0x37, 0x3c, 0x87, 0xc4, 0x0d, 0xa6, 0xd2, 0xa2, 0x5f,
-        0x05, 0xbd, 0xa6, 0x8f, 0xe0, 0x77, 0xb6, 0x6e
-    ],
-    [
-        0xcb, 0xf4, 0xb9, 0xf7, 0x04, 0x70, 0x85, 0x6b, 0xb4, 0xf4, 0x0f, 0x80,
-        0xb8, 0x7e, 0xdb, 0x90, 0x86, 0x59, 0x97, 0xff, 0xee, 0x6d, 0xf3, 0x15,
-        0xab, 0x16, 0x6d, 0x71, 0x3a, 0xf4, 0x33, 0xa5
-    ],
-    [
-        0x09, 0xc2, 0x68, 0x68, 0x80, 0x09, 0x5b, 0x1a, 0x4c, 0x24, 0x9e, 0xe3,
-        0xac, 0x4e, 0xea, 0x8a, 0x01, 0x4f, 0x11, 0xe6, 0xf9, 0x86, 0xd0, 0xb5,
-        0x02, 0x5a, 0xc1, 0xf3, 0x9a, 0xfb, 0xd9, 0xae
-    ]];
-
-    /// Passphrases acquired on test vector of bip-0038.
-    const TV_38_PASS: [&str; 5] = [
-        "TestingOneTwoThree", "Satoshi",
-        "\u{03d2}\u{0301}\u{0000}\u{010400}\u{01f4a9}", "TestingOneTwoThree",
-        "Satoshi"
+        [
+            "xpub661MyMwAqRbcEZVB4dScxMAdx6d4nFc9nvyvH3v4gJL378CSRZiYmhRoP7mBy6gS",
+            "PSCYk6SzXPTf3ND1cZAceL7SfJ1Z3GC8vBgp2epUt13"
+        ],
+        [
+            "xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHB",
+            "aohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y"
+        ]
     ];
 
     /// WIF secret key with payload of all bytes '0x11'.
@@ -1749,85 +1611,76 @@ mod tests {
 
     /// Bytes representation of the private extended key 'army van defense...'
     const XPRV_A_B: [u8; NBBY_XKEY] = [
-        0x04, 0x88, 0xad, 0xe4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0xb7, 0x0d, 0x67, 0x53, 0x23, 0xc4, 0x0e, 0xc4, 0x61, 0xe0, 0xa6,
-        0xaf, 0x60, 0x3b, 0x1f, 0x13, 0x5f, 0xb2, 0xaf, 0x9a, 0xe7, 0x53, 0xee,
-        0xff, 0x18, 0x92, 0x27, 0x32, 0xa7, 0x3b, 0x0f, 0x05, 0x00, 0xb2, 0xa0,
-        0xd5, 0x76, 0xb8, 0x28, 0xb5, 0x37, 0x68, 0x8b, 0x56, 0x1f, 0x2c, 0xfa,
-        0x8d, 0xac, 0x36, 0x02, 0xd5, 0x4c, 0x62, 0xbd, 0xe6, 0x19, 0xad, 0x53,
-        0x31, 0xe6, 0xc2, 0x35, 0xee, 0x26,
+        0x04, 0x88, 0xad, 0xe4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xb7, 0x0d,
+        0x67, 0x53, 0x23, 0xc4, 0x0e, 0xc4, 0x61, 0xe0, 0xa6, 0xaf, 0x60, 0x3b, 0x1f, 0x13, 0x5f,
+        0xb2, 0xaf, 0x9a, 0xe7, 0x53, 0xee, 0xff, 0x18, 0x92, 0x27, 0x32, 0xa7, 0x3b, 0x0f, 0x05,
+        0x00, 0xb2, 0xa0, 0xd5, 0x76, 0xb8, 0x28, 0xb5, 0x37, 0x68, 0x8b, 0x56, 0x1f, 0x2c, 0xfa,
+        0x8d, 0xac, 0x36, 0x02, 0xd5, 0x4c, 0x62, 0xbd, 0xe6, 0x19, 0xad, 0x53, 0x31, 0xe6, 0xc2,
+        0x35, 0xee, 0x26,
     ];
 
     /// Bytes representation of the private extended key generated randomly.
     const XPRV_R_B: [u8; NBBY_XKEY] = [
-        0x04, 0x88, 0xad, 0xe4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x47, 0x61, 0x89, 0xa3, 0xed, 0x99, 0xca, 0xf4, 0x0f, 0x7c, 0x9b,
-        0x88, 0xf1, 0x6d, 0x80, 0x58, 0x92, 0xc9, 0x26, 0xb7, 0xbf, 0x8e, 0xcf,
-        0x7b, 0xff, 0x63, 0x2d, 0x7d, 0x40, 0x42, 0xbd, 0x4d, 0x00, 0xd1, 0x95,
-        0x7c, 0xc8, 0x92, 0xb0, 0xd4, 0xf0, 0x48, 0x35, 0x65, 0xc4, 0x5c, 0x8c,
-        0x4f, 0x2a, 0xe9, 0x46, 0x1c, 0x65, 0xb6, 0x1e, 0x33, 0x76, 0xb5, 0x05,
-        0xbe, 0x15, 0x6e, 0xce, 0x5e, 0x3c
+        0x04, 0x88, 0xad, 0xe4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, 0x61,
+        0x89, 0xa3, 0xed, 0x99, 0xca, 0xf4, 0x0f, 0x7c, 0x9b, 0x88, 0xf1, 0x6d, 0x80, 0x58, 0x92,
+        0xc9, 0x26, 0xb7, 0xbf, 0x8e, 0xcf, 0x7b, 0xff, 0x63, 0x2d, 0x7d, 0x40, 0x42, 0xbd, 0x4d,
+        0x00, 0xd1, 0x95, 0x7c, 0xc8, 0x92, 0xb0, 0xd4, 0xf0, 0x48, 0x35, 0x65, 0xc4, 0x5c, 0x8c,
+        0x4f, 0x2a, 0xe9, 0x46, 0x1c, 0x65, 0xb6, 0x1e, 0x33, 0x76, 0xb5, 0x05, 0xbe, 0x15, 0x6e,
+        0xce, 0x5e, 0x3c
     ];
 
     /// Bytes representation of the private extended key with zeroed entropy.
     const XPRV_Z_B: [u8; NBBY_XKEY] = [
-        0x04, 0x88, 0xad, 0xe4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x79, 0x23, 0x40, 0x8d, 0xad, 0xd3, 0xc7, 0xb5, 0x6e, 0xed, 0x15,
-        0x56, 0x77, 0x07, 0xae, 0x5e, 0x5d, 0xca, 0x08, 0x9d, 0xe9, 0x72, 0xe0,
-        0x7f, 0x3b, 0x86, 0x04, 0x50, 0xe2, 0xa3, 0xb7, 0x0e, 0x00, 0x18, 0x37,
-        0xc1, 0xbe, 0x8e, 0x29, 0x95, 0xec, 0x11, 0xcd, 0xa2, 0xb0, 0x66, 0x15,
-        0x1b, 0xe2, 0xcf, 0xb4, 0x8a, 0xdf, 0x9e, 0x47, 0xb1, 0x51, 0xd4, 0x6a,
-        0xda, 0xb3, 0xa2, 0x1c, 0xdf, 0x67
+        0x04, 0x88, 0xad, 0xe4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x79, 0x23,
+        0x40, 0x8d, 0xad, 0xd3, 0xc7, 0xb5, 0x6e, 0xed, 0x15, 0x56, 0x77, 0x07, 0xae, 0x5e, 0x5d,
+        0xca, 0x08, 0x9d, 0xe9, 0x72, 0xe0, 0x7f, 0x3b, 0x86, 0x04, 0x50, 0xe2, 0xa3, 0xb7, 0x0e,
+        0x00, 0x18, 0x37, 0xc1, 0xbe, 0x8e, 0x29, 0x95, 0xec, 0x11, 0xcd, 0xa2, 0xb0, 0x66, 0x15,
+        0x1b, 0xe2, 0xcf, 0xb4, 0x8a, 0xdf, 0x9e, 0x47, 0xb1, 0x51, 0xd4, 0x6a, 0xda, 0xb3, 0xa2,
+        0x1c, 0xdf, 0x67
     ];
 
     /// Bytes representation of the extended public key 'XPUB_A'.
     const XPUB_A_B: [u8; NBBY_XKEY] = [
-        0x04, 0x88, 0xb2, 0x1e, 0x04, 0x94, 0xb0, 0x09, 0xed, 0x00, 0x00, 0x00,
-        0x00, 0xca, 0x1a, 0xc2, 0x0b, 0x6c, 0xbf, 0x6e, 0x45, 0xc3, 0xcf, 0xc2,
-        0xf2, 0x39, 0x9a, 0x5f, 0xd8, 0x91, 0xa9, 0x2f, 0xff, 0x52, 0x21, 0xcd,
-        0xe0, 0x8a, 0x73, 0x98, 0xb5, 0x2d, 0x58, 0x1f, 0xd0, 0x03, 0x86, 0x36,
-        0x98, 0x82, 0x77, 0x1a, 0x91, 0xbe, 0xc8, 0xb1, 0xc9, 0xd5, 0x0c, 0x54,
-        0x66, 0xfe, 0x04, 0x44, 0xff, 0x76, 0x3e, 0xe0, 0xf7, 0x3b, 0xa0, 0x60,
-        0xc4, 0x7c, 0x63, 0x53, 0xbd, 0xf7
+        0x04, 0x88, 0xb2, 0x1e, 0x04, 0x94, 0xb0, 0x09, 0xed, 0x00, 0x00, 0x00, 0x00, 0xca, 0x1a,
+        0xc2, 0x0b, 0x6c, 0xbf, 0x6e, 0x45, 0xc3, 0xcf, 0xc2, 0xf2, 0x39, 0x9a, 0x5f, 0xd8, 0x91,
+        0xa9, 0x2f, 0xff, 0x52, 0x21, 0xcd, 0xe0, 0x8a, 0x73, 0x98, 0xb5, 0x2d, 0x58, 0x1f, 0xd0,
+        0x03, 0x86, 0x36, 0x98, 0x82, 0x77, 0x1a, 0x91, 0xbe, 0xc8, 0xb1, 0xc9, 0xd5, 0x0c, 0x54,
+        0x66, 0xfe, 0x04, 0x44, 0xff, 0x76, 0x3e, 0xe0, 0xf7, 0x3b, 0xa0, 0x60, 0xc4, 0x7c, 0x63,
+        0x53, 0xbd, 0xf7
     ];
 
     /// Bytes representation of the extended public key 'XPUB_R'.
     const XPUB_R_B: [u8; NBBY_XKEY] = [
-        0x04, 0x88, 0xb2, 0x1e, 0x04, 0x57, 0x66, 0x12, 0xd8, 0x00, 0x00, 0x00,
-        0x00, 0x83, 0x59, 0xda, 0xd5, 0x56, 0xc1, 0xf4, 0x3c, 0x23, 0x3f, 0xb4,
-        0xba, 0x56, 0x55, 0xc1, 0xd6, 0x89, 0x3b, 0x1f, 0x9d, 0x6d, 0x42, 0x52,
-        0xdb, 0x18, 0xd3, 0x0f, 0xc7, 0xfe, 0x3c, 0x44, 0xd6, 0x02, 0xbb, 0xb6,
-        0xd2, 0x7b, 0x71, 0xb2, 0x6b, 0xf9, 0x23, 0xf9, 0xce, 0xcb, 0x31, 0x3f,
-        0x1c, 0xb3, 0x48, 0xda, 0x6a, 0x92, 0xe8, 0xba, 0x7c, 0xa1, 0x70, 0x25,
-        0x61, 0xb4, 0x62, 0x00, 0xc0, 0x67
+        0x04, 0x88, 0xb2, 0x1e, 0x04, 0x57, 0x66, 0x12, 0xd8, 0x00, 0x00, 0x00, 0x00, 0x83, 0x59,
+        0xda, 0xd5, 0x56, 0xc1, 0xf4, 0x3c, 0x23, 0x3f, 0xb4, 0xba, 0x56, 0x55, 0xc1, 0xd6, 0x89,
+        0x3b, 0x1f, 0x9d, 0x6d, 0x42, 0x52, 0xdb, 0x18, 0xd3, 0x0f, 0xc7, 0xfe, 0x3c, 0x44, 0xd6,
+        0x02, 0xbb, 0xb6, 0xd2, 0x7b, 0x71, 0xb2, 0x6b, 0xf9, 0x23, 0xf9, 0xce, 0xcb, 0x31, 0x3f,
+        0x1c, 0xb3, 0x48, 0xda, 0x6a, 0x92, 0xe8, 0xba, 0x7c, 0xa1, 0x70, 0x25, 0x61, 0xb4, 0x62,
+        0x00, 0xc0, 0x67
     ];
 
     /// Bytes representation of the extended public key 'XPUB_Z'.
     const XPUB_Z_B: [u8; NBBY_XKEY] = [
-        0x04, 0x88, 0xb2, 0x1e, 0x04, 0x6c, 0xc9, 0xf2, 0x52, 0x00, 0x00, 0x00,
-        0x00, 0xbc, 0xe8, 0x0d, 0xd5, 0x80, 0x79, 0x2c, 0xd1, 0x8a, 0xf5, 0x42,
-        0x79, 0x0e, 0x56, 0xaa, 0x81, 0x31, 0x78, 0xdc, 0x28, 0x64, 0x4b, 0xb5,
-        0xf0, 0x3d, 0xbd, 0x44, 0xc8, 0x5f, 0x2d, 0x2e, 0x7a, 0x03, 0x86, 0xb8,
-        0x65, 0xb5, 0x2b, 0x75, 0x3d, 0x0a, 0x84, 0xd0, 0x9b, 0xc2, 0x00, 0x63,
-        0xfa, 0xb5, 0xd8, 0x45, 0x3e, 0xc3, 0x3c, 0x21, 0x5d, 0x40, 0x19, 0xa5,
-        0x80, 0x1c, 0x9c, 0x64, 0x38, 0xb9
+        0x04, 0x88, 0xb2, 0x1e, 0x04, 0x6c, 0xc9, 0xf2, 0x52, 0x00, 0x00, 0x00, 0x00, 0xbc, 0xe8,
+        0x0d, 0xd5, 0x80, 0x79, 0x2c, 0xd1, 0x8a, 0xf5, 0x42, 0x79, 0x0e, 0x56, 0xaa, 0x81, 0x31,
+        0x78, 0xdc, 0x28, 0x64, 0x4b, 0xb5, 0xf0, 0x3d, 0xbd, 0x44, 0xc8, 0x5f, 0x2d, 0x2e, 0x7a,
+        0x03, 0x86, 0xb8, 0x65, 0xb5, 0x2b, 0x75, 0x3d, 0x0a, 0x84, 0xd0, 0x9b, 0xc2, 0x00, 0x63,
+        0xfa, 0xb5, 0xd8, 0x45, 0x3e, 0xc3, 0x3c, 0x21, 0x5d, 0x40, 0x19, 0xa5, 0x80, 0x1c, 0x9c,
+        0x64, 0x38, 0xb9
     ];
 
     #[test]
     fn test_as_bs58ck_prv() {
         assert_eq!(
-            ExtPrvKey::from_bs58_prv(&XPRV_A.concat()).unwrap()
-            .as_bs58ck_prv(),
+            ExtPrvKey::from_bs58_prv(&XPRV_A.concat()).unwrap().as_bs58ck_prv(),
             XPRV_A.concat()
         );
         assert_eq!(
-            ExtPrvKey::from_bs58_prv(&XPRV_R.concat()).unwrap()
-            .as_bs58ck_prv(),
+            ExtPrvKey::from_bs58_prv(&XPRV_R.concat()).unwrap().as_bs58ck_prv(),
             XPRV_R.concat()
         );
         assert_eq!(
-            ExtPrvKey::from_bs58_prv(&XPRV_Z.concat()).unwrap()
-            .as_bs58ck_prv(),
+            ExtPrvKey::from_bs58_prv(&XPRV_Z.concat()).unwrap().as_bs58ck_prv(),
             XPRV_Z.concat()
         );
         assert_eq!(
@@ -1838,8 +1691,7 @@ mod tests {
             XPRV_R_D.concat()
         );
         assert_ne!(
-            ExtPrvKey::from_bs58_prv(&XPRV_Z.concat()).unwrap()
-            .as_bs58ck_prv(),
+            ExtPrvKey::from_bs58_prv(&XPRV_Z.concat()).unwrap().as_bs58ck_prv(),
             "error"
         );
     }
@@ -1847,23 +1699,19 @@ mod tests {
     #[test]
     fn test_as_bs58ck_pub() {
         assert_eq!(
-            ExtPubKey::from_bs58_pub(&XPUB_A.concat()).unwrap()
-            .as_bs58ck_pub(),
+            ExtPubKey::from_bs58_pub(&XPUB_A.concat()).unwrap().as_bs58ck_pub(),
             XPUB_A.concat()
         );
         assert_eq!(
-            ExtPubKey::from_bs58_pub(&XPUB_R.concat()).unwrap()
-            .as_bs58ck_pub(),
+            ExtPubKey::from_bs58_pub(&XPUB_R.concat()).unwrap().as_bs58ck_pub(),
             XPUB_R.concat()
         );
         assert_eq!(
-            ExtPubKey::from_bs58_pub(&XPUB_Z.concat()).unwrap()
-            .as_bs58ck_pub(),
+            ExtPubKey::from_bs58_pub(&XPUB_Z.concat()).unwrap().as_bs58ck_pub(),
             XPUB_Z.concat()
         );
         assert_ne!(
-            ExtPubKey::from_bs58_pub(&XPUB_Z.concat()).unwrap()
-            .as_bs58ck_pub(),
+            ExtPubKey::from_bs58_pub(&XPUB_Z.concat()).unwrap().as_bs58ck_pub(),
             "error"
         );
     }
@@ -1871,52 +1719,34 @@ mod tests {
     #[test]
     fn test_bytes_prv() {
         assert_eq!(
-            ExtPrvKey::from_bs58_prv(&XPRV_A.concat()).unwrap().bytes_prv(),
-            XPRV_A_B[..NBBY_XKEY]
+            ExtPrvKey::from_bs58_prv(&XPRV_A.concat()).unwrap().bytes_prv(), XPRV_A_B[..NBBY_XKEY]
         );
         assert_eq!(
-            ExtPrvKey::from_bs58_prv(&XPRV_R.concat()).unwrap().bytes_prv(),
-            XPRV_R_B[..NBBY_XKEY]
+            ExtPrvKey::from_bs58_prv(&XPRV_R.concat()).unwrap().bytes_prv(), XPRV_R_B[..NBBY_XKEY]
         );
         assert_eq!(
-            ExtPrvKey::from_bs58_prv(&XPRV_Z.concat()).unwrap().bytes_prv(),
-            XPRV_Z_B[..NBBY_XKEY]
+            ExtPrvKey::from_bs58_prv(&XPRV_Z.concat()).unwrap().bytes_prv(), XPRV_Z_B[..NBBY_XKEY]
         );
     }
 
     #[test]
     fn test_bytes_pub() {
         assert_eq!(
-            ExtPubKey::from_bs58_pub(&XPUB_A.concat()).unwrap().bytes_pub(),
-            XPUB_A_B[..NBBY_XKEY]
+            ExtPubKey::from_bs58_pub(&XPUB_A.concat()).unwrap().bytes_pub(), XPUB_A_B[..NBBY_XKEY]
         );
         assert_eq!(
-            ExtPubKey::from_bs58_pub(&XPUB_R.concat()).unwrap().bytes_pub(),
-            XPUB_R_B[..NBBY_XKEY]
+            ExtPubKey::from_bs58_pub(&XPUB_R.concat()).unwrap().bytes_pub(), XPUB_R_B[..NBBY_XKEY]
         );
         assert_eq!(
-            ExtPubKey::from_bs58_pub(&XPUB_Z.concat()).unwrap().bytes_pub(),
-            XPUB_Z_B[..NBBY_XKEY]
+            ExtPubKey::from_bs58_pub(&XPUB_Z.concat()).unwrap().bytes_pub(), XPUB_Z_B[..NBBY_XKEY]
         );
     }
 
     #[test]
     fn test_ckd_prv() {
-        assert!(
-            ExtPrvKey::from_bs58_prv(&XPRV_A.concat()).unwrap()
-            .ckd_prv(&0)
-            .is_ok()
-        );
-        assert!(
-            ExtPrvKey::from_bs58_prv(&XPRV_R.concat()).unwrap()
-            .ckd_prv(&0)
-            .is_ok()
-        );
-        assert!(
-            ExtPrvKey::from_bs58_prv(&XPRV_Z.concat()).unwrap()
-            .ckd_prv(&0)
-            .is_ok()
-        );
+        assert!(ExtPrvKey::from_bs58_prv(&XPRV_A.concat()).unwrap().ckd_prv(&0).is_ok());
+        assert!(ExtPrvKey::from_bs58_prv(&XPRV_R.concat()).unwrap().ckd_prv(&0).is_ok());
+        assert!(ExtPrvKey::from_bs58_prv(&XPRV_Z.concat()).unwrap().ckd_prv(&0).is_ok());
         let mut to_test = ExtPrvKey::from_bs58_prv(&XPRV_A.concat()).unwrap();
         to_test.prvdata = [0xff; 32];
         assert_eq!(to_test.ckd_prv(&0).unwrap_err(), Error::SecEnt);
@@ -1926,21 +1756,9 @@ mod tests {
 
     #[test]
     fn test_ckd_pub() {
-        assert!(
-            ExtPubKey::from_bs58_pub(&XPUB_A.concat()).unwrap()
-            .ckd_pub(&0)
-            .is_ok()
-        );
-        assert!(
-            ExtPubKey::from_bs58_pub(&XPUB_R.concat()).unwrap()
-            .ckd_pub(&0)
-            .is_ok()
-        );
-        assert!(
-            ExtPubKey::from_bs58_pub(&XPUB_Z.concat()).unwrap()
-            .ckd_pub(&0)
-            .is_ok()
-        );
+        assert!(ExtPubKey::from_bs58_pub(&XPUB_A.concat()).unwrap().ckd_pub(&0).is_ok());
+        assert!(ExtPubKey::from_bs58_pub(&XPUB_R.concat()).unwrap().ckd_pub(&0).is_ok());
+        assert!(ExtPubKey::from_bs58_pub(&XPUB_Z.concat()).unwrap() .ckd_pub(&0).is_ok());
         let mut to_test = ExtPubKey::from_bs58_pub(&XPUB_A.concat()).unwrap();
         to_test.pubdata = [0xff; 33];
         assert_eq!(to_test.ckd_pub(&0).unwrap_err(), Error::PubData);
@@ -1973,10 +1791,7 @@ mod tests {
         assert_eq!(XPRV_A.concat().decode_base58ck().unwrap(), XPRV_A_B);
         assert_eq!(XPRV_R.concat().decode_base58ck().unwrap(), XPRV_R_B);
         assert_eq!(XPRV_Z.concat().decode_base58ck().unwrap(), XPRV_Z_B);
-        assert_eq!(
-            ["!"; LEN_ARG_MIN].concat().decode_base58ck().unwrap_err(),
-            Error::Base58
-        );
+        assert_eq!(["!"; LEN_ARG_MIN].concat().decode_base58ck().unwrap_err(),Error::Base58);
         assert_eq!(
             ["a"; LEN_ARG_MIN - 1].concat().decode_base58ck().unwrap_err(),
             Error::Argument(String::from(["a"; LEN_ARG_MIN - 1].concat()))
@@ -1992,29 +1807,17 @@ mod tests {
         assert_eq!(SEGW_1.decode_bech32().unwrap(), SEGW_DEC_1);
         assert_eq!(SEGW_A.decode_bech32().unwrap(), SEGW_DEC_A);
         assert_eq!(SEGW_L.decode_bech32().unwrap(), SEGW_DEC_L);
-        assert_eq!(
-            SEGW_L.replace("7", "0").decode_bech32().unwrap_err(),
-            Error::Checksum
-        );
-        assert_eq!(
-            SEGW_L.replace("7", "!").decode_bech32().unwrap_err(),
-            Error::Bech32
-        );
+        assert_eq!(SEGW_L.replace("7", "0").decode_bech32().unwrap_err(), Error::Checksum);
+        assert_eq!(SEGW_L.replace("7", "!").decode_bech32().unwrap_err(), Error::Bech32);
     }
 
     #[test]
     fn test_decode_path() {
         assert!(PATH_START.decode_path(false).is_ok());
         assert!("m/0h/0".decode_path(true).is_err());
-        assert!(
-            "m/0/1h/9/2147483647h/0/32h/69/96/0h/1".decode_path(false).is_ok()
-        );
-        assert!( // maximum
-            "m/0/1h/9/2147483647h/0/32h/69/96/0h/1/".decode_path(false).is_ok()
-        );
-        assert!(
-            "m/0/1h/9/4294967295/0/32h/69/96/0h/1/".decode_path(false).is_err()
-        );
+        assert!("m/0/1h/9/2147483647h/0/32h/69/96/0h/1".decode_path(false).is_ok());
+        assert!("m/0/1h/9/2147483647h/0/32h/69/96/0h/1/".decode_path(false).is_ok());
+        assert!("m/0/1h/9/4294967295/0/32h/69/96/0h/1/".decode_path(false).is_err());
         assert!("M".decode_path(false).is_err());
         assert!("n".decode_path(false).is_err());
         assert!("/0h/mh".decode_path(false).is_err());
@@ -2038,15 +1841,9 @@ mod tests {
             "m/0/1h/9/4294967295/0/32".decode_path(false).unwrap_err(),
             Error::Path(String::from("4294967295"))
         );
-        assert_eq!(
-            "m/0h/1".decode_path(false).unwrap(), [HARD_NB, 1]
-        );
-        assert_eq!(
-            "m/1/10h".decode_path(false).unwrap(), [1, 0x8000000a]
-        );
-        assert_eq!(
-            "m/0/1/2/3/4/".decode_path(false).unwrap(), [0, 1, 2, 3, 4]
-        );
+        assert_eq!("m/0h/1".decode_path(false).unwrap(), [HARD_NB, 1]);
+        assert_eq!("m/1/10h".decode_path(false).unwrap(), [1, 0x8000000a]);
+        assert_eq!("m/0/1/2/3/4/".decode_path(false).unwrap(), [0, 1, 2, 3, 4]);
     }
 
     #[test]
@@ -2101,19 +1898,10 @@ mod tests {
         assert_eq!(WIC_L.decode_wif().unwrap(), ([0x69; 32], true));
         assert_eq!(WIF_1.decode_wif().unwrap(), ([0x11; 32], false));
         assert_eq!(WIF_L.decode_wif().unwrap(), ([0x69; 32], false));
-        assert_eq!(
-            [WIF_L, "a"].concat().decode_wif().unwrap_err(), Error::WifKey
-        );
-        assert_eq!(
-            WIC_L.replace("dgbg", "dgdg").decode_wif().unwrap_err(),
-            Error::Checksum
-        );
-        assert_eq!(
-            ["a"; LEN_WIF_U].concat().decode_wif().unwrap_err(), Error::WifKey
-        );
-        assert_eq!(
-            ["a"; LEN_WIF_C].concat().decode_wif().unwrap_err(), Error::WifKey
-        );
+        assert_eq!([WIF_L, "a"].concat().decode_wif().unwrap_err(), Error::WifKey);
+        assert_eq!(WIC_L.replace("dgbg", "dgdg").decode_wif().unwrap_err(), Error::Checksum);
+        assert_eq!(["a"; LEN_WIF_U].concat().decode_wif().unwrap_err(), Error::WifKey);
+        assert_eq!(["a"; LEN_WIF_C].concat().decode_wif().unwrap_err(), Error::WifKey);
     }
 
     #[test]
@@ -2203,16 +1991,10 @@ mod tests {
     #[test]
     fn test_encode_path() {
         assert_eq!("m".decode_path(false).unwrap().encode_path(), "m");
-        assert_eq!(
-            "m/00000000h/1".decode_path(false).unwrap().encode_path(), "m/0h/1"
-        );
-        assert_eq!(
-            "m/000001/10h".decode_path(false).unwrap().encode_path(), "m/1/10h"
-        );
+        assert_eq!("m/00000000h/1".decode_path(false).unwrap().encode_path(), "m/0h/1");
+        assert_eq!("m/000001/10h".decode_path(false).unwrap().encode_path(), "m/1/10h");
         assert_eq!([0u32; 0].encode_path(), "m");
-        assert_eq!(
-            [1u32, 2, 3, 4, 5, HARD_NB].encode_path(), "m/1/2/3/4/5/0h"
-        );
+        assert_eq!([1u32, 2, 3, 4, 5, HARD_NB].encode_path(), "m/1/2/3/4/5/0h");
     }
 
     #[test]
@@ -2223,18 +2005,6 @@ mod tests {
         assert_eq!(&[0x11; 32].encode_wif(false).unwrap(), WIF_1);
         assert_eq!(&P2WPKH_B.encode_wif(false).unwrap(), WIF_A);
         assert_eq!(&[0x69; 32].encode_wif(false).unwrap(), WIF_L);
-    }
-
-    #[test]
-    fn test_encrypt() {
-        let mut compress = false;
-        for (idx, key) in TV_38_KEY.iter().enumerate() {
-            if idx > 2 { compress = true }
-            assert_eq!(
-                key.encrypt(TV_38_PASS[idx], compress).unwrap(),
-                TV_38_ENCRYPTED[idx]
-            );
-        }
     }
 
     #[test]
@@ -2442,20 +2212,10 @@ mod tests {
         assert!(HEX_STR_1.info_entropy("", DEF_SEP).is_ok());
         assert!(HEX_STR_L.info_entropy("", DEF_SEP).is_ok());
         assert!(HEX_STR_1.info_entropy("pass", DEF_SEP).is_ok());
-        assert_eq!(
-            HEX_STR_0.info_entropy("", DEF_SEP).unwrap_err(), Error::SecEnt
-        );
-        assert_eq!(
-            HEX_STR_F.info_entropy("", DEF_SEP).unwrap_err(), Error::SecEnt
-        );
-        assert_eq!(
-            ["a"; 63].concat().info_entropy("", DEF_SEP).unwrap_err(),
-            Error::SecEnt
-        );
-        assert_eq!(
-            ["?"; 64].concat().info_entropy("", DEF_SEP).unwrap_err(),
-            Error::HexStr
-        );
+        assert_eq!(HEX_STR_0.info_entropy("", DEF_SEP).unwrap_err(), Error::SecEnt);
+        assert_eq!(HEX_STR_F.info_entropy("", DEF_SEP).unwrap_err(), Error::SecEnt);
+        assert_eq!(["a"; 63].concat().info_entropy("", DEF_SEP).unwrap_err(), Error::SecEnt);
+        assert_eq!(["?"; 64].concat().info_entropy("", DEF_SEP).unwrap_err(), Error::HexStr);
     }
 
     #[test]
@@ -2466,18 +2226,9 @@ mod tests {
         assert!(WIC_1.info_wif("", DEF_SEP).is_ok());
         assert!(WIC_L.info_wif("", DEF_SEP).is_ok());
         assert!(WIC_1.info_wif("superduperpass", DEF_SEP).is_ok());
-        assert_eq!(
-            WIC_1.replace("H", "h").info_wif("", DEF_SEP).unwrap_err(),
-            Error::Checksum
-        );
-        assert_eq!(
-            WIF_1.replace("W", "w").info_wif("", DEF_SEP).unwrap_err(),
-            Error::Checksum
-        );
-        assert_eq!(
-            "something_wrong".info_wif("", DEF_SEP).unwrap_err(),
-            Error::WifKey
-        );
+        assert_eq!(WIC_1.replace("H", "h").info_wif("", DEF_SEP).unwrap_err(), Error::Checksum);
+        assert_eq!(WIF_1.replace("W", "w").info_wif("", DEF_SEP).unwrap_err(), Error::Checksum);
+        assert_eq!("something_wrong".info_wif("", DEF_SEP).unwrap_err(), Error::WifKey);
     }
 
     #[test]
@@ -2489,9 +2240,7 @@ mod tests {
             P2WPKH_U_1, P2WPKH_U_A, P2WPKH_U_L, SEGW_1, SEGW_A, SEGW_L
         ];
         for input in &inputs {
-            assert!(
-                init_clap().get_matches_from_safe(vec!["", input]).is_ok()
-            );
+            assert!(init_clap().get_matches_from_safe(vec!["", input]).is_ok());
         }
         assert!(
             init_clap().get_matches_from_safe(
@@ -2501,46 +2250,18 @@ mod tests {
                 ]
             ).is_ok()
         );
-        assert!(
-            init_clap().get_matches_from_safe(
-                vec!["only_binary_name"]
-            ).is_err()
-        );
+        assert!(init_clap().get_matches_from_safe(vec!["only_binary_name"]).is_err());
         assert!(
             init_clap().get_matches_from_safe(
                 vec!["", &["a"; LEN_ARG_MIN - 1].concat()]
             ).is_err()
         );
-        assert!(
-            init_clap().get_matches_from_safe(
-                vec!["", "wrong_data"]
-            ).is_err()
-        );
-        assert!(
-            init_clap().get_matches_from_safe(
-                vec!["", &XPRV_A.concat(), "-e"]
-            ).is_err()
-        );
-        assert!(
-            init_clap().get_matches_from_safe(
-                vec!["", &XPRV_A.concat(), "-p"]
-            ).is_err()
-        );
-        assert!(
-            init_clap().get_matches_from_safe(
-                vec!["", &XPRV_A.concat(), "-r"]
-            ).is_err()
-        );
-        assert!(
-            init_clap().get_matches_from_safe(
-                vec!["", &XPRV_A.concat(), "-x"]
-            ).is_err()
-        );
-        assert!(
-            init_clap().get_matches_from_safe(
-                vec!["", "double", "data"]
-            ).is_err()
-        );
+        assert!(init_clap().get_matches_from_safe(vec!["", "wrong_data"]).is_err());
+        assert!(init_clap().get_matches_from_safe(vec!["", &XPRV_A.concat(), "-e"]).is_err());
+        assert!(init_clap().get_matches_from_safe(vec!["", &XPRV_A.concat(), "-p"]).is_err());
+        assert!(init_clap().get_matches_from_safe(vec!["", &XPRV_A.concat(), "-r"]).is_err());
+        assert!(init_clap().get_matches_from_safe(vec!["", &XPRV_A.concat(), "-x"]).is_err());
+        assert!(init_clap().get_matches_from_safe(vec!["", "double", "data"]).is_err());
     }
 
     #[test]
@@ -2663,38 +2384,19 @@ mod tests {
         for input in &inputs {
             assert!(validate_data(String::from(*input)).is_ok());
         }
-        assert!(
-            validate_data(String::from(&XPRV_A.concat()[..LEN_XKEY - 1]))
-                .is_err()
-        );
+        assert!(validate_data(String::from(&XPRV_A.concat()[..LEN_XKEY - 1])) .is_err());
         assert!(validate_data(format!("{}a", XPRV_A.concat())).is_err());
-        assert!(
-            validate_data(String::from(&HEX_STR_1[1..])).is_err()
-        );
+        assert!(validate_data(String::from(&HEX_STR_1[1..])).is_err());
         assert!(validate_data(format!("{}a", HEX_STR_1)).is_err());
-        assert!(
-            validate_data(String::from(&WIF_L[..LEN_WIF_U - 1])).is_err()
-        );
+        assert!(validate_data(String::from(&WIF_L[..LEN_WIF_U - 1])).is_err());
         assert!(validate_data(format!("{}a", WIF_L)).is_err());
-        assert!(
-            validate_data(String::from(&WIC_L[..LEN_WIF_C - 1])).is_err()
-        );
+        assert!(validate_data(String::from(&WIC_L[..LEN_WIF_C - 1])).is_err());
         assert!(validate_data(format!("{}a", WIC_L)).is_err());
-        assert!(
-            validate_data(
-                String::from(&P2WPKH_C_A[..LEN_LEG_MIN - 1])
-            ).is_err()
-        );
+        assert!(validate_data(String::from(&P2WPKH_C_A[..LEN_LEG_MIN - 1])).is_err());
         assert!(validate_data(format!("{}ab", P2WPKH_C_A)).is_err());
-        assert!(
-            validate_data(String::from(&P2WPKH_P2SH_L[..LEN_LEG_MIN - 1]))
-                .is_err()
-        );
+        assert!(validate_data(String::from(&P2WPKH_P2SH_L[..LEN_LEG_MIN - 1])).is_err());
         assert!(validate_data(format!("{}ab", P2WPKH_P2SH_L)).is_err());
-        assert!(
-            validate_data(String::from(&SEGW_A[..LEN_SEGWIT - 1]))
-                .is_err()
-        );
+        assert!(validate_data(String::from(&SEGW_A[..LEN_SEGWIT - 1])).is_err());
         assert!(validate_data(format!("{}a", SEGW_A)).is_err());
     }
 
