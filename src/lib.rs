@@ -16,23 +16,25 @@
 //!     Compare the results of this tool with others. Verify the implementation (and the tests).
 //!
 //!     If encryption is used, test [decryption](https://crates.io/crates/encrypt38) until you are
-//!  convinced that the passphrase you *used* was the one you *wanted*. **Use at your won risk.**
+//!  convinced that the passphrase you *used* was the one you *wanted*.
+//!
+//!     **Use at your won risk.**
 //!
 //! ## Example
 //!
 //! ```console
-//! $ derivation32 ypub6YfAsJGdMwB6pV9eE1Dpa7KwpfYXagJpDh7e6yi1myzwEutoMVu477LQUzyReCocRU3EigHApDYSYfJPMAT8j1FLmZvgD7EQJ68ubL77b4H
-//! ypub6YfAsJGdMwB6pV9eE1Dpa7KwpfYXagJpDh7e6yi1myzwEutoMVu477LQUzyReCocRU3EigHApDYSYfJPMAT8j1FLmZvgD7EQJ68ubL77b4H
-//! m/0 | 3GhPc11bE5hu5CSR6KVqam2tcS1sLR9rAB | 037a2925d9cc2455f2c5f20b2c50cfa41c7b02a17e3bf1840c0c3579c4f4fe9bfe
-//! m/1 | 3EtSyXgk2qRAs4TSy1UQf1QZtu2i169obQ | 029c77ed6cbe722c9f1b031190999a8f1e52446976bc1315b41efeb0fb61f15815
-//! m/2 | 3EeyKYEMcTrVAZo8vHCTHDjN5fVnRjQtpi | 02404649eb104b7278b408272db3e1842b3478616770a91a3ad23e358aa9e56699
-//! m/3 | 39umhwrWwoGADMKa8QumnC87tBrFerpxFM | 020b326057bf83e052b44cadae5fa15c763ada4ba1c2af2416a7a726126d9e16ce
-//! m/4 | 33Stx25eoDKZTcaRzL5u8MvTRjMo7QL1ow | 020b32841216439f5349f59babc5e53d4416e97e2e19fa92e710c9a843bac89917
-//! m/5 | 35rpXAQWhcXjvr8YXfnXBSzyBBgyDNwTiG | 024b87bb67600cd07313a34455c4e3b94062b22f1180bc53d1ad9abb289cef39e7
-//! m/6 | 3AWJfQXDWmmJJSUrjeAbvSFt2Gw7Y3uqwm | 02ee01d644e0a8357f22b861e752c817cd8d5baaec5b6ab8c2e5fcf574f6608cce
-//! m/7 | 3J7HeTNdu9dHiMvFNjbEZZXVgcEqKNndW2 | 03f6350d75a5d65e966a1d3faa93884d5a399f7cd7f0ee77c017ef04852cafa9af
-//! m/8 | 3EgWkKMRY8XpSkuD8YcezarGWco9YqSGaY | 032d954ac76c6afb5aeebc814a9202bb8669de911cad4b3f02e2cb9b4a4894f1c8
-//! m/9 | 34FzroffJL1B4jXZX6ZVuaaiq6nEn61zVz | 02ffa6af7389e4d05ee663551b0ac31fe0185bbb534080fddcfb5ca7ed06db9d85
+//! $ derivation32 ypub6ZXGqDMx4DsojFChRekQJdW5w1UW5JaLUrSN7wXUcoDf2egC21Ycq1ostNik2wz9nd48pyEL6n6CxBNap6B56iMyHEBv3ytGugKRUCj9LSP
+//! ypub6ZXGqDMx4DsojFChRekQJdW5w1UW5JaLUrSN7wXUcoDf2egC21Ycq1ostNik2wz9nd48pyEL6n6CxBNap6B56iMyHEBv3ytGugKRUCj9LSP
+//! m/0 | 3AvgNg5V1TkMU7yZZCPTdohzySmBX3Wsnt | 03ea2d750dab0388662ecc142eec8379d52a3fb2c3d03c5a64555a85dff3b34497
+//! m/1 | 3511m3xxtmKjiBJYcKZGyxVSJ7jwNBwAPK | 024940543af2b30e68762feaad32457dc7f0711f01d20e1097bafb7eee47f257d5
+//! m/2 | 3FSwvaEECxQHJgWA6fQeYoYYEAauk7cJSg | 036e7cee3e0e0a951178716fa5e5e7bfb26b7f073fc5daca26ff528c0846cabbb4
+//! m/3 | 33QM6BAorebmxpB35S1Kuo5edwMy7QrhHC | 036c6b4e86ef104fe72725de3508bd041a797728ac83631e927679163ff0fc8c19
+//! m/4 | 35tf6DpuS7iZ2nXH8C6DNawFXz4Br9mqie | 03d93e0c9ab1a4442d73707053a9fa4b56dd14f3d2f79e73d6f181d1ad8783a0e6
+//! m/5 | 3PuaDPqBkHnwHWAufm78UdozMPzj2Ap5qo | 0300e46b582e78f38abb219cb3eb22b386789b1988b829a30b563a9e69b95dce2d
+//! m/6 | 3HmBbbDfgKTxGAGfxy1n1okKudgphwVgym | 025b841819bc7f849d55942392e404899affc1a0b76b9575b3e2dbf0f76cdb5b86
+//! m/7 | 3FdEm4dakmMs4ScSmDmyUbBK3THRWkBBFk | 03cbbfb8922148d2af520a680bbcba42add58f7dc6c403308aedce957a994ff6b2
+//! m/8 | 3Nn995qzzzUwz8mKyjfAozBKb6xX68GBgt | 0255c327c5c4507cb76b961b518d985db340f9b1c19add118171d0ef98254c1964
+//! m/9 | 3EES1qCEGAzXbSNtXcpCZBe5G2u4p9pEC5 | 02b9ca0ff5e63fb59a464ab146612e9d79f8b21bbb2f606283fcbcf7c2f5bb06d1
 //! ```
 //!
 //! ## Features
@@ -69,8 +71,8 @@
 //!
 //! * **Range of result**
 //!
-//!     This tool optionally receives a range of child number to be showed (including hardened ones
-//! when possible).
+//!     This tool optionally receives a range of child numbers to be showed (including hardened
+//!  ones when possible).
 //!
 //! ## Help
 //!
@@ -92,7 +94,7 @@
 //!     -e <passphrase>        Encrypt resulting private keys (bip-0038)
 //!     -p <path>              Path used to derive the extended private key
 //!     -r <range>             Closed range in the form of (1..9h) used on derivation
-//!     -s <separator>         Specific character (or string) to separate results
+//!     -s <separator>         Specify a character (or string) to separate results
 //!
 //! ARGS:
 //!     <DATA>    Address, hexadecimal entropy, extended key or wif key
@@ -102,8 +104,8 @@
 //!
 //! * **Generation of extended root keys**
 //!
-//!     If you don't have a mnemonic and corresponding extended root keys consider using
-//!  [mnemonic39](https://crates.io/crates/mnemonic39)
+//!     If you don't have a mnemonic and the corresponding extended root keys consider using
+//!  [mnemonic39](https://crates.io/crates/mnemonic39).
 
 use bech32::ToBase32;
 use bip38::Encrypt;
@@ -318,7 +320,7 @@ trait BytesManipulation {
     /// Sha256 and ripemd160 in sequence.
     fn hash160(&self) -> [u8; 20];
 
-    /// Receives an arbitrary number of bytes and return 32 bytes of a dual sha256 hash.
+    /// Receives an arbitrary number of bytes and return 32 bytes of a double sha256 hash.
     fn hash256(&self) -> [u8; 32];
 
     /// Receives bytes and return string of hexadecimal characters.
@@ -386,12 +388,6 @@ trait StringManipulation {
     fn decode_range(&self) -> Result<(u32, u32), Error>;
 }
 
-impl From<bip38::Error> for Error {
-    fn from(err: bip38::Error) -> Self {
-        Error::Bip38(err)
-    }
-}
-
 impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match self {
@@ -418,6 +414,12 @@ impl core::fmt::Display for Error {
             Error::SecEnt => write!(f, "invalid secret entropy"),
             Error::WifKey => write!(f, "invalid wif secret key")
         }
+    }
+}
+
+impl From<bip38::Error> for Error {
+    fn from(err: bip38::Error) -> Self {
+        Error::Bip38(err)
     }
 }
 
@@ -598,13 +600,11 @@ impl ExtPrvKey {
                 84 => child_pub.pubdata.segwit_p2wpkh()?,
                 _ => String::from("please, don't")
             };
-
             let prv_str = if encrypt {
                 child_prv.prvdata.encrypt(pass, true)?
             } else {
                 child_prv.prvdata.encode_wif(true)?
             };
-
             println!(
                 "{}/{}{}{}{}{}{}{}",
                 base_path_str,
@@ -1198,7 +1198,6 @@ impl StringManipulation for str {
     }
 }
 
-
 /// Evaluate arguments and execute actions accordingly.
 #[doc(hidden)]
 pub fn handle_arguments(matches: ArgMatches) -> Result<(), Error> {
@@ -1295,7 +1294,7 @@ pub fn init_clap() -> clap::App<'static, 'static> {
                 .validator(validate_range)
         ).arg(
             Arg::with_name("separator")
-                .help("Specific character (or string) to separate results")
+                .help("Specify a character (or string) to separate results")
                 .short("s")
                 .takes_value(true)
         ).version(clap::crate_version!())
@@ -1515,136 +1514,136 @@ mod tests {
     /// Private extended keys of first test vector of bip-0032.
     const TV_32_01_XPRV: [[&str; 2]; 6] = [
         [
-            "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKm",
-            "PGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi"
+            "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kej",
+            "MRNNU3TGtRBeJgk33yuGBxrMPHi"
         ],
         [
-            "xprv9uHRZZhk6KAJC1avXpDAp4MDc3sQKNxDiPvvkX8Br5ngLNv1TxvUxt4cV1rGL5hj",
-            "6KCesnDYUhd7oWgT11eZG7XnxHrnYeSvkzY7d2bhkJ7"
+            "xprv9uHRZZhk6KAJC1avXpDAp4MDc3sQKNxDiPvvkX8Br5ngLNv1TxvUxt4cV1rGL5hj6KCesnDYUhd7oWgT",
+            "11eZG7XnxHrnYeSvkzY7d2bhkJ7"
         ],
         [
-            "xprv9wTYmMFdV23N2TdNG573QoEsfRrWKQgWeibmLntzniatZvR9BmLnvSxqu53Kw1Um",
-            "YPxLgboyZQaXwTCg8MSY3H2EU4pWcQDnRnrVA1xe8fs"
+            "xprv9wTYmMFdV23N2TdNG573QoEsfRrWKQgWeibmLntzniatZvR9BmLnvSxqu53Kw1UmYPxLgboyZQaXwTCg",
+            "8MSY3H2EU4pWcQDnRnrVA1xe8fs"
         ],
         [
-            "xprv9z4pot5VBttmtdRTWfWQmoH1taj2axGVzFqSb8C9xaxKymcFzXBDptWmT7FwuEzG",
-            "3ryjH4ktypQSAewRiNMjANTtpgP4mLTj34bhnZX7UiM"
+            "xprv9z4pot5VBttmtdRTWfWQmoH1taj2axGVzFqSb8C9xaxKymcFzXBDptWmT7FwuEzG3ryjH4ktypQSAewR",
+            "iNMjANTtpgP4mLTj34bhnZX7UiM"
         ],
         [
-            "xprvA2JDeKCSNNZky6uBCviVfJSKyQ1mDYahRjijr5idH2WwLsEd4Hsb2Tyh8RfQMuPh",
-            "7f7RtyzTtdrbdqqsunu5Mm3wDvUAKRHSC34sJ7in334"
+            "xprvA2JDeKCSNNZky6uBCviVfJSKyQ1mDYahRjijr5idH2WwLsEd4Hsb2Tyh8RfQMuPh7f7RtyzTtdrbdqqs",
+            "unu5Mm3wDvUAKRHSC34sJ7in334"
         ],
         [
-            "xprvA41z7zogVVwxVSgdKUHDy1SKmdb533PjDz7J6N6mV6uS3ze1ai8FHa8kmHScGpWm",
-            "j4WggLyQjgPie1rFSruoUihUZREPSL39UNdE3BBDu76"
+            "xprvA41z7zogVVwxVSgdKUHDy1SKmdb533PjDz7J6N6mV6uS3ze1ai8FHa8kmHScGpWmj4WggLyQjgPie1rF",
+            "SruoUihUZREPSL39UNdE3BBDu76"
         ]
     ];
 
     /// Private extended keys of second test vector of bip-0032.
     const TV_32_02_XPRV: [[&str; 2]; 6] = [
         [
-            "xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssr",
-            "dK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U"
+            "xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNq",
+            "Pqm55Qn3LqFtT2emdEXVYsCzC2U"
         ],
         [
-            "xprv9vHkqa6EV4sPZHYqZznhT2NPtPCjKuDKGY38FBWLvgaDx45zo9WQRUT3dKYnjwih",
-            "2yJD9mkrocEZXo1ex8G81dwSM1fwqWpWkeS3v86pgKt"
+            "xprv9vHkqa6EV4sPZHYqZznhT2NPtPCjKuDKGY38FBWLvgaDx45zo9WQRUT3dKYnjwih2yJD9mkrocEZXo1e",
+            "x8G81dwSM1fwqWpWkeS3v86pgKt"
         ],
         [
-            "xprv9wSp6B7kry3Vj9m1zSnLvN3xH8RdsPP1Mh7fAaR7aRLcQMKTR2vidYEeEg2mUCTA",
-            "wCd6vnxVrcjfy2kRgVsFawNzmjuHc2YmYRmagcEPdU9"
+            "xprv9wSp6B7kry3Vj9m1zSnLvN3xH8RdsPP1Mh7fAaR7aRLcQMKTR2vidYEeEg2mUCTAwCd6vnxVrcjfy2kR",
+            "gVsFawNzmjuHc2YmYRmagcEPdU9"
         ],
         [
-            "xprv9zFnWC6h2cLgpmSA46vutJzBcfJ8yaJGg8cX1e5StJh45BBciYTRXSd25UEPVues",
-            "F9yog62tGAQtHjXajPPdbRCHuWS6T8XA2ECKADdw4Ef"
+            "xprv9zFnWC6h2cLgpmSA46vutJzBcfJ8yaJGg8cX1e5StJh45BBciYTRXSd25UEPVuesF9yog62tGAQtHjXa",
+            "jPPdbRCHuWS6T8XA2ECKADdw4Ef"
         ],
         [
-            "xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39",
-            "njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc"
+            "xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcx",
+            "FLJ8HFsTjSyQbLYnMpCqE2VbFWc"
         ],
         [
-            "xprvA2nrNbFZABcdryreWet9Ea4LvTJcGsqrMzxHx98MMrotbir7yrKCEXw7nadnHM8D",
-            "q38EGfSh6dqA9QWTyefMLEcBYJUuekgW4BYPJcr9E7j"
+            "xprvA2nrNbFZABcdryreWet9Ea4LvTJcGsqrMzxHx98MMrotbir7yrKCEXw7nadnHM8Dq38EGfSh6dqA9QWT",
+            "yefMLEcBYJUuekgW4BYPJcr9E7j"
         ]
     ];
 
     /// Private extended keys of third test vector of bip-0032.
     const TV_32_03_XPRV: [[&str; 2]; 2] = [
         [
-            "xprv9s21ZrQH143K25QhxbucbDDuQ4naNntJRi4KUfWT7xo4EKsHt2QJDu7KXp1A3u7B",
-            "i1j8ph3EGsZ9Xvz9dGuVrtHHs7pXeTzjuxBrCmmhgC6"
+            "xprv9s21ZrQH143K25QhxbucbDDuQ4naNntJRi4KUfWT7xo4EKsHt2QJDu7KXp1A3u7Bi1j8ph3EGsZ9Xvz9",
+            "dGuVrtHHs7pXeTzjuxBrCmmhgC6"
         ],
         [
-            "xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7",
-            "AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L"
+            "xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJ",
+            "CVVFceUvJFjaPdGZ2y9WACViL4L"
         ]
     ];
 
     /// Public extended keys of first test vector of bip-0032.
     const TV_32_01_XPUB: [[&str; 2]; 6] = [
         [
-            "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjq",
-            "JoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
+            "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqs",
+            "efD265TMg7usUDFdp6W1EGMcet8"
         ],
         [
-            "xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeN",
-            "K1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw"
+            "xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeNK1VTsfTFUHCdrfp1",
+            "bgwQ9xv5ski8PX9rL2dZXvgGDnw"
         ],
         [
-            "xpub6ASuArnXKPbfEwhqN6e3mwBcDTgzisQN1wXN9BJcM47sSikHjJf3UFHKkNAWbWMi",
-            "Gj7Wf5uMash7SyYq527Hqck2AxYysAA7xmALppuCkwQ"
+            "xpub6ASuArnXKPbfEwhqN6e3mwBcDTgzisQN1wXN9BJcM47sSikHjJf3UFHKkNAWbWMiGj7Wf5uMash7SyYq",
+            "527Hqck2AxYysAA7xmALppuCkwQ"
         ],
         [
-            "xpub6D4BDPcP2GT577Vvch3R8wDkScZWzQzMMUm3PWbmWvVJrZwQY4VUNgqFJPMM3No2",
-            "dFDFGTsxxpG5uJh7n7epu4trkrX7x7DogT5Uv6fcLW5"
+            "xpub6D4BDPcP2GT577Vvch3R8wDkScZWzQzMMUm3PWbmWvVJrZwQY4VUNgqFJPMM3No2dFDFGTsxxpG5uJh7",
+            "n7epu4trkrX7x7DogT5Uv6fcLW5"
         ],
         [
-            "xpub6FHa3pjLCk84BayeJxFW2SP4XRrFd1JYnxeLeU8EqN3vDfZmbqBqaGJAyiLjTAwm",
-            "6ZLRQUMv1ZACTj37sR62cfN7fe5JnJ7dh8zL4fiyLHV"
+            "xpub6FHa3pjLCk84BayeJxFW2SP4XRrFd1JYnxeLeU8EqN3vDfZmbqBqaGJAyiLjTAwm6ZLRQUMv1ZACTj37",
+            "sR62cfN7fe5JnJ7dh8zL4fiyLHV"
         ],
         [
-            "xpub6H1LXWLaKsWFhvm6RVpEL9P4KfRZSW7abD2ttkWP3SSQvnyA8FSVqNTEcYFgJS2U",
-            "aFcxupHiYkro49S8yGasTvXEYBVPamhGW6cFJodrTHy"
+            "xpub6H1LXWLaKsWFhvm6RVpEL9P4KfRZSW7abD2ttkWP3SSQvnyA8FSVqNTEcYFgJS2UaFcxupHiYkro49S8",
+            "yGasTvXEYBVPamhGW6cFJodrTHy"
         ]
     ];
 
     /// Public extended keys of second test vector of bip-0032.
     const TV_32_02_XPUB: [[&str; 2]; 6] = [
         [
-            "xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6o",
-            "DMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB"
+            "xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6",
+            "mr8BDzTJY47LJhkJ8UB7WEGuduB"
         ],
         [
-            "xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7E",
-            "RfvrnKZjXoUmmDznezpbZb7ap6r1D3tgFxHmwMkQTPH"
+            "xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7ERfvrnKZjXoUmmDzn",
+            "ezpbZb7ap6r1D3tgFxHmwMkQTPH"
         ],
         [
-            "xpub6ASAVgeehLbnwdqV6UKMHVzgqAG8Gr6riv3Fxxpj8ksbH9ebxaEyBLZ85ySDhKiL",
-            "DBrQSARLq1uNRts8RuJiHjaDMBU4Zn9h8LZNnBC5y4a"
+            "xpub6ASAVgeehLbnwdqV6UKMHVzgqAG8Gr6riv3Fxxpj8ksbH9ebxaEyBLZ85ySDhKiLDBrQSARLq1uNRts8",
+            "RuJiHjaDMBU4Zn9h8LZNnBC5y4a"
         ],
         [
-            "xpub6DF8uhdarytz3FWdA8TvFSvvAh8dP3283MY7p2V4SeE2wyWmG5mg5EwVvmdMVCQc",
-            "oNJxGoWaU9DCWh89LojfZ537wTfunKau47EL2dhHKon"
+            "xpub6DF8uhdarytz3FWdA8TvFSvvAh8dP3283MY7p2V4SeE2wyWmG5mg5EwVvmdMVCQcoNJxGoWaU9DCWh89",
+            "LojfZ537wTfunKau47EL2dhHKon"
         ],
         [
-            "xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4",
-            "koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL"
+            "xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY",
+            "2grBGRjaDMzQLcgJvLJuZZvRcEL"
         ],
         [
-            "xpub6FnCn6nSzZAw5Tw7cgR9bi15UV96gLZhjDstkXXxvCLsUXBGXPdSnLFbdpq8p9Hm",
-            "GsApME5hQTZ3emM2rnY5agb9rXpVGyy3bdW6EEgAtqt"
+            "xpub6FnCn6nSzZAw5Tw7cgR9bi15UV96gLZhjDstkXXxvCLsUXBGXPdSnLFbdpq8p9HmGsApME5hQTZ3emM2",
+            "rnY5agb9rXpVGyy3bdW6EEgAtqt"
         ]
     ];
 
     /// Public extended keys of third test vector of bip-0032.
     const TV_32_03_XPUB: [[&str; 2]; 2] = [
         [
-            "xpub661MyMwAqRbcEZVB4dScxMAdx6d4nFc9nvyvH3v4gJL378CSRZiYmhRoP7mBy6gS",
-            "PSCYk6SzXPTf3ND1cZAceL7SfJ1Z3GC8vBgp2epUt13"
+            "xpub661MyMwAqRbcEZVB4dScxMAdx6d4nFc9nvyvH3v4gJL378CSRZiYmhRoP7mBy6gSPSCYk6SzXPTf3ND1",
+            "cZAceL7SfJ1Z3GC8vBgp2epUt13"
         ],
         [
-            "xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHB",
-            "aohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y"
+            "xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9M",
+            "Yo6oDaPPLPxSb7gwQN3ih19Zm4Y"
         ]
     ];
 
@@ -1668,50 +1667,50 @@ mod tests {
 
     ///army van defense carry jealous true garbage claim echo media make crunch
     const XPRV_A: [&str; 2] = [
-        "xprv9s21ZrQH143K3t4UZrNgeA3w861fwjYLaGwmPtQyPMmzshV2owVpfBSd2Q7YsHZ9",
-        "j6i6ddYjb5PLtUdMZn8LhvuCVhGcQntq5rn7JVMqnie"
+        "xprv9s21ZrQH143K3t4UZrNgeA3w861fwjYLaGwmPtQyPMmzshV2owVpfBSd2Q7YsHZ9j6i6ddYjb5PLtUdMZn8L",
+        "hvuCVhGcQntq5rn7JVMqnie"
     ];
 
     /// Root key generated randomly.
     const XPRV_R: [&str; 2] = [
-        "xprv9s21ZrQH143K2maNNY6YGXJZ4yGBEae4Jc4s6pfR6haWQEjLbCa2gBzUyYJS5cQu",
-        "xPNjTtfBqUC9DPPyXfJVUgMn6qqmUUDJBtTzqa6rY2w"
+        "xprv9s21ZrQH143K2maNNY6YGXJZ4yGBEae4Jc4s6pfR6haWQEjLbCa2gBzUyYJS5cQuxPNjTtfBqUC9DPPyXfJV",
+        "UgMn6qqmUUDJBtTzqa6rY2w"
     ];
 
     /// m/1h/2/3h/4/5h/6/7h/8/9' derivation of root key generated randomly.
     const XPRV_R_D: [&str; 2] = [
-        "xprvAAVaDKt9qqGMFfrRPXWyL9SVkSsq7QozvfmVh1e9g1A9XZUuYwewdx84fw9iL8Yk",
-        "yzycjB4STWQf9bFuzATGyZTR7PUB1CLpGRaLUAiGgxH"
+        "xprvAAVaDKt9qqGMFfrRPXWyL9SVkSsq7QozvfmVh1e9g1A9XZUuYwewdx84fw9iL8YkyzycjB4STWQf9bFuzATG",
+        "yZTR7PUB1CLpGRaLUAiGgxH"
     ];
 
     /// 'XPRV_R' with a non zero value at byte index 45 (invalid in private).
     const XPRV_R_NZ: [&str; 2] = [
-        "xprv9s21ZrQH143K2maNNY6YGXJZ4yGBEae4Jc4s6pfR6haWQEjLbCa2gBzV34QbbxYG",
-        "S4PWd2gF2LN4N4MHgdxtjcqiixH56CSRZhAiexotiHQ"
+        "xprv9s21ZrQH143K2maNNY6YGXJZ4yGBEae4Jc4s6pfR6haWQEjLbCa2gBzV34QbbxYGS4PWd2gF2LN4N4MHgdxt",
+        "jcqiixH56CSRZhAiexotiHQ"
     ];
 
     /// Root key generated with zeroed entropy.
     const XPRV_Z: [&str; 2] = [
-        "xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnR",
-        "RuL2Qrg5ggqHKNVpxR86QEC8w35uxmGoggxtQTPvfUu"
+        "xprv9s21ZrQH143K3GJpoapnV8SFfukcVBSfeCficPSGfubmSFDxo1kuHnLisriDvSnRRuL2Qrg5ggqHKNVpxR86",
+        "QEC8w35uxmGoggxtQTPvfUu"
     ];
 
     /// Extended public key of 'XPRV_A' with path m/44h/0h/0h/0.
     const XPUB_A: [&str; 2] = [
-        "xpub6EdHrjLe1JdwRR6W5romAvmVzk7bfXQWV2N9SuTWP1ebszkLVQMev6KWTNtb2D9m",
-        "QpocUfAsPQGkE6wtVe8Kug3dYyA9yCJTnHRPJAbgEAF"
+        "xpub6EdHrjLe1JdwRR6W5romAvmVzk7bfXQWV2N9SuTWP1ebszkLVQMev6KWTNtb2D9mQpocUfAsPQGkE6wtVe8K",
+        "ug3dYyA9yCJTnHRPJAbgEAF"
     ];
 
     /// Extended public key of 'XPRV_R' with path m/44h/0h/0h/0.
     const XPUB_R: [&str; 2] = [
-        "xpub6EBARkwLtwz68GAfCSJ8AAqn6gxR2Lw6mJfK23rqDya64GvRT2LHYwDmBVdG5Caz",
-        "s1Q59gPXj1MNmmL24Vi4Ce7nmjizMude8mGYqzSbMB8"
+        "xpub6EBARkwLtwz68GAfCSJ8AAqn6gxR2Lw6mJfK23rqDya64GvRT2LHYwDmBVdG5Cazs1Q59gPXj1MNmmL24Vi4",
+        "Ce7nmjizMude8mGYqzSbMB8"
     ];
 
     /// Extended public key of 'XPRV_Z' with path m/44h/0h/0h/0.
     const XPUB_Z: [&str; 2] = [
-        "xpub6ELHKXNimKbxMCytPh7EdC2QXx46T9qLDJWGnTraz1H9kMMFdcduoU69wh9cxP12",
-        "wDxqAAfbaESWGYt5rREsX1J8iR2TEunvzvddduAPYcY"
+        "xpub6ELHKXNimKbxMCytPh7EdC2QXx46T9qLDJWGnTraz1H9kMMFdcduoU69wh9cxP12wDxqAAfbaESWGYt5rREs",
+        "X1J8iR2TEunvzvddduAPYcY"
     ];
 
     /// Bytes representation of the private extended key 'army van defense...'
@@ -1930,6 +1929,9 @@ mod tests {
         assert!("0/mh".decode_path(false).is_err());
         assert!("m/0h/ah".decode_path(false).is_err());
         assert_eq!(PATH_START.decode_path(false).unwrap(), []);
+        assert_eq!("m/0h/1".decode_path(false).unwrap(), [HARD_NB, 1]);
+        assert_eq!("m/1/10h".decode_path(false).unwrap(), [1, 0x8000000a]);
+        assert_eq!("m/0/1/2/3/4/".decode_path(false).unwrap(), [0, 1, 2, 3, 4]);
         assert_eq!(
             "m/0/1h/9/2147483647h/m/32".decode_path(false).unwrap_err(),
             Error::Path(String::from("m"))
@@ -1946,9 +1948,6 @@ mod tests {
             "m/0/1h/9/4294967295/0/32".decode_path(false).unwrap_err(),
             Error::Path(String::from("4294967295"))
         );
-        assert_eq!("m/0h/1".decode_path(false).unwrap(), [HARD_NB, 1]);
-        assert_eq!("m/1/10h".decode_path(false).unwrap(), [1, 0x8000000a]);
-        assert_eq!("m/0/1/2/3/4/".decode_path(false).unwrap(), [0, 1, 2, 3, 4]);
     }
 
     #[test]
@@ -1963,37 +1962,16 @@ mod tests {
         assert_eq!("0..9h".decode_range().unwrap(), (0, 0x80000009));
         assert_eq!("0h..9h".decode_range().unwrap(), (0x80000000, 0x80000009));
         assert_eq!("6232..6233".decode_range().unwrap(), (6232, 6233));
+        assert_eq!("1h..0".decode_range().unwrap_err(), Error::Range(String::from("0")));
+        assert_eq!("0:9".decode_range().unwrap_err(), Error::Range(String::from("0:9")));
+        assert_eq!("9..9".decode_range().unwrap_err(), Error::Range(String::from("9..9")));
+        assert_eq!("9..0".decode_range().unwrap_err(), Error::Range(String::from("9..0")));
+        assert_eq!("-9..0".decode_range().unwrap_err(), Error::Range(String::from("-9")));
+        assert_eq!("-1..".decode_range().unwrap_err(), Error::Range(String::from("-1")));
+        assert_eq!("..-1".decode_range().unwrap_err(), Error::Range(String::from("-1")));
         assert_eq!(
             "0..2147483649".decode_range().unwrap_err(),
             Error::Range(String::from("2147483649"))
-        );
-        assert_eq!(
-            "1h..0".decode_range().unwrap_err(),
-            Error::Range(String::from("0"))
-        );
-        assert_eq!(
-            "0:9".decode_range().unwrap_err(),
-            Error::Range(String::from("0:9"))
-        );
-        assert_eq!(
-            "9..9".decode_range().unwrap_err(),
-            Error::Range(String::from("9..9"))
-        );
-        assert_eq!(
-            "9..0".decode_range().unwrap_err(),
-            Error::Range(String::from("9..0"))
-        );
-        assert_eq!(
-            "-9..0".decode_range().unwrap_err(),
-            Error::Range(String::from("-9"))
-        );
-        assert_eq!(
-            "-1..".decode_range().unwrap_err(),
-            Error::Range(String::from("-1"))
-        );
-        assert_eq!(
-            "..-1".decode_range().unwrap_err(),
-            Error::Range(String::from("-1"))
         );
     }
 
@@ -2268,19 +2246,12 @@ mod tests {
             P2WPKH_U_1, P2WPKH_U_A, P2WPKH_U_L, SEGW_1, SEGW_A, SEGW_L
         ];
         for input in &inputs {
-            assert!(
-                handle_arguments(
-                    init_clap().get_matches_from(vec!["", input])
-                ).is_ok()
-            );
+            assert!(handle_arguments(init_clap().get_matches_from(vec!["", input])).is_ok());
         }
         assert!(
             handle_arguments(
                 init_clap().get_matches_from(
-                    vec![
-                        "", &XPRV_R.concat(), "-e","バンドメイド", "-p",
-                        "m/0h", "-r", "0h..11h"
-                    ]
+                    vec!["", &XPRV_R.concat(), "-e","バンドメイド", "-p", "m/0h", "-r", "0h..11h"]
                 )
             ).is_ok()
         );
@@ -2385,12 +2356,8 @@ mod tests {
         assert_eq!(PUB_U_1.p2wpkh().unwrap(), P2WPKH_U_1);
         assert_eq!(PUB_U_A.p2wpkh().unwrap(), P2WPKH_U_A);
         assert_eq!(PUB_U_L.p2wpkh().unwrap(), P2WPKH_U_L);
-        assert_eq!(
-            PUB_C_L[1..].p2wpkh().unwrap_err(), Error::NbPubB(32)
-        );
-        assert_eq!(
-            PUB_U_L[1..].p2wpkh().unwrap_err(), Error::NbPubB(64)
-        );
+        assert_eq!(PUB_C_L[1..].p2wpkh().unwrap_err(), Error::NbPubB(32));
+        assert_eq!(PUB_U_L[1..].p2wpkh().unwrap_err(), Error::NbPubB(64));
     }
 
     #[test]

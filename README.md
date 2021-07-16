@@ -19,23 +19,25 @@ derivation32
     Compare the results of this tool with others. Verify the implementation (and the tests).
 
     If encryption is used, test [decryption](https://crates.io/crates/encrypt38) until you are
- convinced that the passphrase you *used* was the one you *wanted*. **Use at your won risk.**
+ convinced that the passphrase you *used* was the one you *wanted*.
+
+    **Use at your won risk.**
 
 ## Example
 
 ```console
-$ derivation32 ypub6YfAsJGdMwB6pV9eE1Dpa7KwpfYXagJpDh7e6yi1myzwEutoMVu477LQUzyReCocRU3EigHApDYSYfJPMAT8j1FLmZvgD7EQJ68ubL77b4H
-ypub6YfAsJGdMwB6pV9eE1Dpa7KwpfYXagJpDh7e6yi1myzwEutoMVu477LQUzyReCocRU3EigHApDYSYfJPMAT8j1FLmZvgD7EQJ68ubL77b4H
-m/0 | 3GhPc11bE5hu5CSR6KVqam2tcS1sLR9rAB | 037a2925d9cc2455f2c5f20b2c50cfa41c7b02a17e3bf1840c0c3579c4f4fe9bfe
-m/1 | 3EtSyXgk2qRAs4TSy1UQf1QZtu2i169obQ | 029c77ed6cbe722c9f1b031190999a8f1e52446976bc1315b41efeb0fb61f15815
-m/2 | 3EeyKYEMcTrVAZo8vHCTHDjN5fVnRjQtpi | 02404649eb104b7278b408272db3e1842b3478616770a91a3ad23e358aa9e56699
-m/3 | 39umhwrWwoGADMKa8QumnC87tBrFerpxFM | 020b326057bf83e052b44cadae5fa15c763ada4ba1c2af2416a7a726126d9e16ce
-m/4 | 33Stx25eoDKZTcaRzL5u8MvTRjMo7QL1ow | 020b32841216439f5349f59babc5e53d4416e97e2e19fa92e710c9a843bac89917
-m/5 | 35rpXAQWhcXjvr8YXfnXBSzyBBgyDNwTiG | 024b87bb67600cd07313a34455c4e3b94062b22f1180bc53d1ad9abb289cef39e7
-m/6 | 3AWJfQXDWmmJJSUrjeAbvSFt2Gw7Y3uqwm | 02ee01d644e0a8357f22b861e752c817cd8d5baaec5b6ab8c2e5fcf574f6608cce
-m/7 | 3J7HeTNdu9dHiMvFNjbEZZXVgcEqKNndW2 | 03f6350d75a5d65e966a1d3faa93884d5a399f7cd7f0ee77c017ef04852cafa9af
-m/8 | 3EgWkKMRY8XpSkuD8YcezarGWco9YqSGaY | 032d954ac76c6afb5aeebc814a9202bb8669de911cad4b3f02e2cb9b4a4894f1c8
-m/9 | 34FzroffJL1B4jXZX6ZVuaaiq6nEn61zVz | 02ffa6af7389e4d05ee663551b0ac31fe0185bbb534080fddcfb5ca7ed06db9d85
+$ derivation32 ypub6ZXGqDMx4DsojFChRekQJdW5w1UW5JaLUrSN7wXUcoDf2egC21Ycq1ostNik2wz9nd48pyEL6n6CxBNap6B56iMyHEBv3ytGugKRUCj9LSP
+ypub6ZXGqDMx4DsojFChRekQJdW5w1UW5JaLUrSN7wXUcoDf2egC21Ycq1ostNik2wz9nd48pyEL6n6CxBNap6B56iMyHEBv3ytGugKRUCj9LSP
+m/0 | 3AvgNg5V1TkMU7yZZCPTdohzySmBX3Wsnt | 03ea2d750dab0388662ecc142eec8379d52a3fb2c3d03c5a64555a85dff3b34497
+m/1 | 3511m3xxtmKjiBJYcKZGyxVSJ7jwNBwAPK | 024940543af2b30e68762feaad32457dc7f0711f01d20e1097bafb7eee47f257d5
+m/2 | 3FSwvaEECxQHJgWA6fQeYoYYEAauk7cJSg | 036e7cee3e0e0a951178716fa5e5e7bfb26b7f073fc5daca26ff528c0846cabbb4
+m/3 | 33QM6BAorebmxpB35S1Kuo5edwMy7QrhHC | 036c6b4e86ef104fe72725de3508bd041a797728ac83631e927679163ff0fc8c19
+m/4 | 35tf6DpuS7iZ2nXH8C6DNawFXz4Br9mqie | 03d93e0c9ab1a4442d73707053a9fa4b56dd14f3d2f79e73d6f181d1ad8783a0e6
+m/5 | 3PuaDPqBkHnwHWAufm78UdozMPzj2Ap5qo | 0300e46b582e78f38abb219cb3eb22b386789b1988b829a30b563a9e69b95dce2d
+m/6 | 3HmBbbDfgKTxGAGfxy1n1okKudgphwVgym | 025b841819bc7f849d55942392e404899affc1a0b76b9575b3e2dbf0f76cdb5b86
+m/7 | 3FdEm4dakmMs4ScSmDmyUbBK3THRWkBBFk | 03cbbfb8922148d2af520a680bbcba42add58f7dc6c403308aedce957a994ff6b2
+m/8 | 3Nn995qzzzUwz8mKyjfAozBKb6xX68GBgt | 0255c327c5c4507cb76b961b518d985db340f9b1c19add118171d0ef98254c1964
+m/9 | 3EES1qCEGAzXbSNtXcpCZBe5G2u4p9pEC5 | 02b9ca0ff5e63fb59a464ab146612e9d79f8b21bbb2f606283fcbcf7c2f5bb06d1
 ```
 
 ## Features
@@ -72,7 +74,7 @@ prefix).
 
 * **Range of result**
 
-    This tool optionally receives a range of child number to be showed (including hardened ones
+    This tool optionally receives a range of child numbers to be showed (including hardened ones
  when possible).
 
 ## Help
@@ -95,7 +97,7 @@ OPTIONS:
     -e <passphrase>        Encrypt resulting private keys (bip-0038)
     -p <path>              Path used to derive the extended private key
     -r <range>             Closed range in the form of (1..9h) used on derivation
-    -s <separator>         Specific character (or string) to separate results
+    -s <separator>         Specify a character (or string) to separate results
 
 ARGS:
     <DATA>    Address, hexadecimal entropy, extended key or wif key
@@ -105,5 +107,5 @@ ARGS:
 
 * **Generation of extended root keys**
 
-    If you don't have a mnemonic and corresponding extended root keys consider using
- [mnemonic39](https://crates.io/crates/mnemonic39)
+    If you don't have a mnemonic and the corresponding extended root keys consider using
+ [mnemonic39](https://crates.io/crates/mnemonic39).
