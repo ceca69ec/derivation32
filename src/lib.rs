@@ -77,7 +77,7 @@
 //! ## Help
 //!
 //! ```shell
-//! derivation32 1.1.0
+//! derivation32 1.1.1
 //! Inform extended key and optional path and/or range to show derivation. Insert
 //! address, hexadecimal entropy or wif private key to show information about it.
 //! Optional range is closed (include start and end). Optionally encrypts private
@@ -463,6 +463,36 @@ impl BytesManipulation for [u8] {
         let mut address_bytes = vec![0x00]; // version prefix
         address_bytes.append(&mut self.hash160().to_vec());
         Ok(address_bytes.encode_base58ck())
+    }
+}
+
+/// Implementation of enum Error.
+impl Error {
+    /// Retrieve the status code to be showed when exiting because of an error.
+    #[doc(hidden)]
+    pub fn status(&self) -> i32 {
+        match self {
+            Error::Address => 1,
+            Error::Argument(_) => 2,
+            Error::Base58 => 3,
+            Error::Bech32 => 4,
+            Error::Bip38(_) => 5,
+            Error::Checksum => 6,
+            Error::Context(_) => 7,
+            Error::FromHard => 8,
+            Error::HexStr => 9,
+            Error::Hmac => 10,
+            Error::KeyLen => 11,
+            Error::KeyVer => 12,
+            Error::NbPubB(_) => 13,
+            Error::NotFound => 14,
+            Error::Path(_) => 15,
+            Error::PrvData => 16,
+            Error::PubData => 17,
+            Error::Range(_) => 18,
+            Error::SecEnt => 19,
+            Error::WifKey => 20
+        }
     }
 }
 

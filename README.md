@@ -80,7 +80,7 @@ prefix).
 ## Help
 
 ```shell
-derivation32 1.1.0
+derivation32 1.1.1
 Inform extended key and optional path and/or range to show derivation. Insert
 address, hexadecimal entropy or wif private key to show information about it.
 Optional range is closed (include start and end). Optionally encrypts private
