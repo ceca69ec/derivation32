@@ -77,7 +77,7 @@
 //! ## Help
 //!
 //! ```shell
-//! derivation32 1.1.1
+//! derivation32 1.1.2
 //! Inform extended key and optional path and/or range to show derivation. Insert
 //! address, hexadecimal entropy or wif private key to show information about it.
 //! Optional range is closed (include start and end). Optionally encrypts private
@@ -98,6 +98,15 @@
 //!
 //! ARGS:
 //!     <DATA>    Address, hexadecimal entropy, extended key or wif key
+//! ```
+//!
+//! ## Installation
+//!
+//! You have to install [rust](https://www.rust-lang.org/tools/install) and a
+//!  [liker](https://gcc.gnu.org/wiki/InstallingGCC) if you don't already have them.
+//!
+//! ```shell
+//! $ cargo install derivation32
 //! ```
 //!
 //! ## Recommendation
