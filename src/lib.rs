@@ -1241,9 +1241,9 @@ impl StringManipulation for str {
 #[doc(hidden)]
 pub fn handle_arguments(matches: ArgMatches) -> Result<(), Error> {
     let data = matches.value_of("DATA").ok_or(Error::NotFound)?;
-    let passphrase = matches.value_of("passphrase").unwrap_or("");
-    let path = matches.value_of("path").unwrap_or("");
-    let range = matches.value_of("range").unwrap_or("");
+    let passphrase = matches.value_of("passphrase").unwrap_or_default();
+    let path = matches.value_of("path").unwrap_or_default();
+    let range = matches.value_of("range").unwrap_or_default();
     let rng_t = if range.is_empty() { DEF_RNG } else { range.decode_range()? };
     let separator = matches.value_of("separator").unwrap_or(DEF_SEP);
 
